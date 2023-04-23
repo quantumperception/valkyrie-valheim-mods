@@ -7,8 +7,8 @@
     <ProjectGuid>{DEAF4438-8089-40ED-8175-398E1261D45B}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>JotunnModStub</RootNamespace>
-    <AssemblyName>JotunnModStub</AssemblyName>
+    <RootNamespace>ValhEmpires</RootNamespace>
+    <AssemblyName>ValhEmpires</AssemblyName>
     <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -48,8 +48,26 @@
     <Reference Include="0Harmony, Version=2.9.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\HarmonyX.2.9.0\lib\net45\0Harmony.dll</HintPath>
     </Reference>
-    <Reference Include="Jotunn, Version=2.11.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\JotunnLib.2.11.0\lib\net462\Jotunn.dll</HintPath>
+    <Reference Include="assembly_valheim_publicized">
+      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_valheim_publicized.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>..\..\..\..\AppData\Roaming\r2modmanPlus-local\Valheim\profiles\ValhEmpires\BepInEx\core\BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx.Harmony">
+      <HintPath>..\..\..\..\AppData\Roaming\r2modmanPlus-local\Valheim\profiles\ValhEmpires\BepInEx\core\BepInEx.Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx.Preloader">
+      <HintPath>..\..\..\..\AppData\Roaming\r2modmanPlus-local\Valheim\profiles\ValhEmpires\BepInEx\core\BepInEx.Preloader.dll</HintPath>
+    </Reference>
+    <Reference Include="EpicMMOSystem">
+      <HintPath>..\..\..\..\Desktop\Valheim Full player\BepInEx\plugins\EpicMMOSystem.dll</HintPath>
+    </Reference>
+    <Reference Include="HarmonyXInterop">
+      <HintPath>..\..\..\..\AppData\Roaming\r2modmanPlus-local\Valheim\profiles\ValhEmpires\BepInEx\core\HarmonyXInterop.dll</HintPath>
+    </Reference>
+    <Reference Include="Jotunn">
+      <HintPath>..\..\..\..\AppData\Roaming\r2modmanPlus-local\Valheim\profiles\ValhEmpires\BepInEx\plugins\ValheimModding-Jotunn\Jotunn.dll</HintPath>
     </Reference>
     <Reference Include="Mono.Cecil, Version=0.11.4.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e, processorArchitecture=MSIL">
       <HintPath>..\packages\Mono.Cecil.0.11.4\lib\net40\Mono.Cecil.dll</HintPath>
@@ -79,16 +97,26 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
+    <Reference Include="UnityEngine">
+      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\unstripped_corlib\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\unstripped_corlib\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Patches.cs" />
     <Compile Include="Properties\IgnoreAccessModifiers.cs" />
-    <Compile Include="JotunnModStub.cs" />
+    <Compile Include="PVPArena.cs" />
+    <Compile Include="PVPBowl.cs" />
+    <Compile Include="ValkyrieUtils.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
     <None Include="README.md" />
+    <EmbeddedResource Include="valkyrie" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Package\plugins\" />

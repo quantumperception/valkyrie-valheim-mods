@@ -1,0 +1,133 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{17516A32-190F-4873-8DF2-3BA09AFA9180}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Cannons</RootNamespace>
+    <AssemblyName>Cannons</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\BepInEx\core\0Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="assembly_googleanalytics_publicized">
+      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_googleanalytics_publicized.dll</HintPath>
+    </Reference>
+    <Reference Include="assembly_guiutils_publicized">
+      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_guiutils_publicized.dll</HintPath>
+    </Reference>
+    <Reference Include="assembly_lux_publicized">
+      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_lux_publicized.dll</HintPath>
+    </Reference>
+    <Reference Include="assembly_postprocessing_publicized">
+      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_postprocessing_publicized.dll</HintPath>
+    </Reference>
+    <Reference Include="assembly_simplemeshcombine_publicized">
+      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_simplemeshcombine_publicized.dll</HintPath>
+    </Reference>
+    <Reference Include="assembly_steamworks_publicized">
+      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_steamworks_publicized.dll</HintPath>
+    </Reference>
+    <Reference Include="assembly_sunshafts_publicized">
+      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_sunshafts_publicized.dll</HintPath>
+    </Reference>
+    <Reference Include="assembly_utils_publicized">
+      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_utils_publicized.dll</HintPath>
+    </Reference>
+    <Reference Include="assembly_valheim_publicized">
+      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_valheim_publicized.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\BepInEx\core\BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx.Harmony">
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\BepInEx\core\BepInEx.Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx.Preloader">
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\BepInEx\core\BepInEx.Preloader.dll</HintPath>
+    </Reference>
+    <Reference Include="HarmonyXInterop">
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\BepInEx\core\HarmonyXInterop.dll</HintPath>
+    </Reference>
+    <Reference Include="Jotunn">
+      <HintPath>..\..\..\..\AppData\Roaming\r2modmanPlus-local\Valheim\profiles\ValhEmpires\BepInEx\plugins\ValheimModding-Jotunn\Jotunn.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+    <Reference Include="UnityEngine">
+      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\unstripped_corlib\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\unstripped_corlib\UnityEngine.AssetBundleModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\unstripped_corlib\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\unstripped_corlib\UnityEngine.IMGUIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\unstripped_corlib\UnityEngine.InputLegacyModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.InputModule">
+      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\unstripped_corlib\UnityEngine.InputModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\unstripped_corlib\UnityEngine.ParticleSystemModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\unstripped_corlib\UnityEngine.PhysicsModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\SteamLibrary\steamapps\common\Valheim dedicated server\valheim_server_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Cannon.cs" />
+    <Compile Include="Cannonball.cs" />
+    <Compile Include="Cannons.cs" />
+    <Compile Include="Patches.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="cannons" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>copy "$(TargetDir)$(TargetFileName)" "D:\SteamLibrary\steamapps\common\ValheimServerDEV\BepInEx\plugins\$(TargetFileName)"
+copy "$(TargetDir)$(TargetFileName)" "D:\SteamLibrary\steamapps\common\ValheimDEV\BepInEx\plugins\$(TargetFileName)"</PostBuildEvent>
+  </PropertyGroup>
+</Project>
