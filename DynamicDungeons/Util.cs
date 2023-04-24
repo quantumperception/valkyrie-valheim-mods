@@ -6,6 +6,17 @@ namespace DynamicDungeons
 {
     public class Util
     {
+        public static void GetMinMaxCoords(Vector3 v1, Vector3 v2, out Vector3 minCoords, out Vector3 maxCoords)
+        {
+            float minX = v1.x < v2.x ? v1.x : v2.x;
+            float maxX = v1.x > v2.x ? v1.x : v2.x;
+            float minY = v1.y < v2.y ? v1.y : v2.y;
+            float maxY = v1.y > v2.y ? v1.y : v2.y;
+            float minZ = v1.z < v2.z ? v1.z : v2.z;
+            float maxZ = v1.z > v2.z ? v1.z : v2.z;
+            minCoords = new Vector3(minX, minY, minZ);
+            maxCoords = new Vector3(maxX, maxY, maxZ);
+        }
         public static void SavePrefabList()
         {
             List<string> items = new List<string>();

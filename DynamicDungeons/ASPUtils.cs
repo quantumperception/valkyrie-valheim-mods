@@ -1,21 +1,25 @@
-﻿using System.Collections.Generic;
+﻿using Jotunn.Utils;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace DynamicDungeons
 {
     public class ASPUtils
     {
-        public abstract class BaseZdoQuery
+        public abstract class BaseDungeonZdoQuery
         {
-            protected Vector3 Center { get; }
-            protected int Range { get; }
+            protected List<Vector3> Corners { get; }
 
             protected List<Vector2i> ZoneIds { get; private set; }
             protected List<ZDO> Zdos { get; private set; }
 
             protected int MinX { get; private set; }
-            protected int MinZ { get; private set; }
             protected int MaxX { get; private set; }
+            protected int MinY { get; private set; }
+            protected int MaxY { get; private set; }
+            protected int MinZ { get; private set; }
             protected int MaxZ { get; private set; }
 
             private bool initialized;
@@ -26,35 +30,23 @@ namespace DynamicDungeons
             /// Selects all ZDO's and ZoneId's using the square formed
             /// by the input, and caches them for subsequent queries.
             /// </summary>
-            protected BaseZdoQuery(Vector3 center, int range)
+            protected BaseDungeonZdoQuery(List<Vector3> corners)
             {
-                Center = center;
-                Range = range;
-
+                Corners = corners;
                 Initialize();
             }
 
             protected virtual void Initialize()
             {
-                if (initialized)
-                {
-                    return;
-                }
-
-                (MinX, MaxX) = GetRange((int)Center.x, Range);
-                (MinZ, MaxZ) = GetRange((int)Center.z, Range);
-
-                // Get zones to check
+                if (initialized) return;
+                Util.GetMinMaxCoords(Corners[0], Corners[1], out Vector3 minCoords, out Vector3 maxCoords);
+                (MinX, MaxX) = (Mathf.RoundToInt(minCoords.x), Mathf.RoundToInt(maxCoords.x));
+                (MinY, MaxY) = (Mathf.RoundToInt(minCoords.y), Mathf.RoundToInt(maxCoords.y));
+                (MinZ, MaxZ) = (Mathf.RoundToInt(minCoords.z), Mathf.RoundToInt(maxCoords.z));
                 ZoneIds = ZoneUtils.GetZonesInSquare(MinX, MinZ, MaxX, MaxZ);
-
-                // Get zdo's
                 Zdos = new List<ZDO>();
 
-                foreach (var zone in ZoneIds)
-                {
-                    ZDOMan.instance.FindObjects(zone, Zdos);
-                }
-
+                foreach (var zone in ZoneIds) ReflectionHelper.InvokePrivate(ZDOMan.instance, "FindObjects", new object[] { zone, Zdos });
                 initialized = true;
             }
 
@@ -65,19 +57,78 @@ namespace DynamicDungeons
 
             protected bool IsWithinRange(ZDO zdo)
             {
-                // Check if within manhattan distance.
-                if (zdo.m_position.x < MinX || zdo.m_position.x > MaxX)
+                Vector3 zdoPosition = zdo.GetPosition();
+                if (zdoPosition.x < MinX || zdoPosition.x > MaxX) return false;
+                if (zdoPosition.z < MinZ || zdoPosition.z > MaxZ) return false;
+                if (zdoPosition.y > MaxY || zdoPosition.y < MinY) return false;
+                return true;
+            }
+        }
+        public class DungeonZdoQuery : BaseDungeonZdoQuery
+        {
+            private Dictionary<int, int> CachedPrefabResults = new Dictionary<int, int>();
+
+            public DungeonZdoQuery(List<Vector3> corners) : base(corners)
+            {
+            }
+
+            public List<ZDO> GetZdosInDungeon(int prefabHash, Predicate<ZDO> condition = null)
+            {
+                List<ZDO> zdosInRange = new List<ZDO>();
+                Util.GetMinMaxCoords(Corners[0], Corners[1], out Vector3 minCoords, out Vector3 maxCoords);
+                if (condition is null) zdosInRange = Zdos.FindAll(z => IsWithinRange(z, prefabHash));
+                else zdosInRange = Zdos.FindAll(zdo => IsWithinRange(zdo, prefabHash) && condition(zdo));
+                return zdosInRange;
+            }
+            public int CountEntities(int prefabHash, Predicate<ZDO> condition = null)
+            {
+                Initialize();
+
+                if (CachedPrefabResults.TryGetValue(prefabHash, out int cachedCount))
+                {
+                    return cachedCount;
+                }
+
+                int instances = 0;
+
+                // Search zdo's with same prefab
+                if (condition is null)
+                {
+                    instances = Zdos.Count(x =>
+                        IsWithinRange(x, prefabHash));
+                }
+                else
+                {
+                    instances = Zdos.Count(x =>
+                        IsWithinRange(x, prefabHash) &&
+                        condition(x));
+                }
+
+                CachedPrefabResults[prefabHash] = instances;
+
+                return instances;
+            }
+
+            public bool HasAny(int prefabHash)
+            {
+                Initialize();
+
+                if (CachedPrefabResults.TryGetValue(prefabHash, out int cachedCount))
+                {
+                    return cachedCount > 0;
+                }
+
+                return Zdos.Any(x => IsWithinRange(x, prefabHash));
+            }
+
+            private bool IsWithinRange(ZDO zdo, int prefabId)
+            {
+                if (zdo.GetPrefab() != prefabId)
                 {
                     return false;
                 }
 
-                if (zdo.m_position.z < MinZ || zdo.m_position.z > MaxZ)
-                {
-                    return false;
-                }
-
-                // Check if within circle distance
-                return zdo.m_position.WithinHorizontalDistance(Center, Range);
+                return IsWithinRange(zdo);
             }
         }
         public static class ZoneUtils

@@ -47,6 +47,7 @@ namespace DynamicDungeons
                 { "BOSS", Color.magenta},
 
             };
+        public static readonly string[] normalChestPrefabs = { "piece_chest_wood", "stonechest" };
         private static Harmony harm = new Harmony("dynamicdungeons");
 
         public static bool IsServer
@@ -64,6 +65,7 @@ namespace DynamicDungeons
                 TryCreateConfigs();
                 FileSystemWatcher watcher = new FileSystemWatcher(configPaths["dungeons"]);
                 watcher.Changed += new FileSystemEventHandler(OnDungeonConfigChange);
+                PrefabManager.OnVanillaPrefabsAvailable += DungeonManager.ScanDungeonChests;
             }
             //AddPieceCategories();
             //bundle = AssetUtils.LoadAssetBundleFromResources("dungeonbundle");
@@ -426,6 +428,7 @@ namespace DynamicDungeons
                     //Game.instance.StartCoroutine(DungeonManager.dungeonPollCoroutine);
                     AddServerRPC();
                     LoadDungeons();
+                    DungeonManager.Instance.managers["TEST"].ScanChests();
                 }
                 if (!DynamicDungeons.IsServer)
                 {

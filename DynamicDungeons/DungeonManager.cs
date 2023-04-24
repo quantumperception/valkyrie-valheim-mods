@@ -24,6 +24,11 @@ namespace DynamicDungeons
         {
 
         }
+        public static void ScanDungeonChests()
+        {
+            if (!DynamicDungeons.IsServer) return;
+            foreach (DungeonEventManager manager in Instance.managers.Values) manager.ScanChests();
+        }
         public static IEnumerator WaitAndPollPlayers(int waitTime)
         {
             while (true)
