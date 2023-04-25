@@ -37,17 +37,10 @@ namespace DynamicDungeons
             {"main",  Path.Combine(jsonConfigsPath, "main.json") },
             {"dungeons", Path.Combine(jsonConfigsPath, "dungeons") },
         };
-        private static readonly Dictionary<string, Color> tierColors = new Dictionary<string, Color>()
-            {
-                { "T1", Color.cyan},
-                { "T2", Color.green},
-                { "T3", Color.yellow},
-                { "T4", Color.red},
-                { "T5", Color.blue},
-                { "BOSS", Color.magenta},
-
-            };
+        public static readonly List<string> tiers = new List<string> { "T1", "T2", "T3", "T4", "T5", "BOSS", };
+        public static readonly Dictionary<string, Color> tierColors = new Dictionary<string, Color>();
         public static readonly string[] normalChestPrefabs = { "piece_chest_wood", "stonechest" };
+        public static GameObject workbenchMarker;
         private static Harmony harm = new Harmony("dynamicdungeons");
 
         public static bool IsServer
@@ -60,6 +53,7 @@ namespace DynamicDungeons
 
         private void Awake()
         {
+            FillTierColors();
             if (DynamicDungeons.IsServer)
             {
                 TryCreateConfigs();
@@ -70,10 +64,45 @@ namespace DynamicDungeons
             //AddPieceCategories();
             //bundle = AssetUtils.LoadAssetBundleFromResources("dungeonbundle");
             //AddDungeon();
+            CreateSegments();
             AddCustomSpawners();
             CommandManager.Instance.AddConsoleCommand(new Commands.SavePrefabListCommand());
             CommandManager.Instance.AddConsoleCommand(new Commands.LogDungeonInfoCommand());
             harm.PatchAll();
+        }
+        private static void CreateSegments()
+        {
+            foreach (KeyValuePair<string, Color> tierColor in tierColors)
+            {
+                GameObject segment = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                DestroyImmediate(segment.GetComponent<Collider>());
+                segment.transform.localScale = new Vector3(0.15f, 0.1f, 1f);
+                segment.GetComponent<Renderer>().material.color = tierColor.Value;
+                segment.name = "spawnersegment_" + tierColor.Key;
+                Jotunn.Logger.LogInfo("Added segment: " + segment.name);
+                PrefabManager.Instance.AddPrefab(segment);
+            }
+            GameObject whiteSegment = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            whiteSegment.transform.localScale = new Vector3(0.15f, 0.1f, 1f);
+            whiteSegment.GetComponent<Renderer>().material.color = Color.white;
+            whiteSegment.name = "spawnersegment_white";
+            PrefabManager.Instance.AddPrefab(whiteSegment);
+        }
+        private static void SetVanillaReferences()
+        {
+            workbenchMarker = ZNetScene.instance.m_prefabs.Find(p => p.name == "piece_workbench").GetComponent<CraftingStation>().m_areaMarker;
+            Jotunn.Logger.LogInfo("Set workbench marker");
+        }
+        private static void FillTierColors()
+        {
+            Color cyanAlpha = Color.cyan; cyanAlpha.a = 0.6f;
+            Color greenAlpha = Color.green; greenAlpha.a = 0.6f;
+            Color yellowAlpha = Color.yellow; yellowAlpha.a = 0.6f;
+            Color redAlpha = Color.red; redAlpha.a = 0.6f;
+            Color blueAlpha = Color.blue; blueAlpha.a = 0.6f;
+            Color magentaAlpha = Color.magenta; magentaAlpha.a = 0.6f;
+            Color[] colors = new Color[] { cyanAlpha, greenAlpha, yellowAlpha, redAlpha, blueAlpha, magentaAlpha };
+            for (int i = 0; i < tiers.Count; i++) { tierColors.Add(tiers[i], colors[i]); }
         }
         private static void OnDungeonConfigChange(object sender, FileSystemEventArgs e)
         {
@@ -149,6 +178,7 @@ namespace DynamicDungeons
                 GameObject cube = PrefabManager.Instance.CreateEmptyPrefab("DungeonSpawner_" + tier.Key);
                 cube.AddComponent<Piece>();
                 cube.GetComponent<MeshRenderer>().material.color = tier.Value;
+                cube.AddComponent<DungeonSpawnArea>();
                 PieceConfig spawnerPieceConfig = new PieceConfig();
                 spawnerPieceConfig.Name = tier.Key + " Dungeon Spawner";
                 spawnerPieceConfig.PieceTable = "Hammer";
@@ -428,11 +458,11 @@ namespace DynamicDungeons
                     //Game.instance.StartCoroutine(DungeonManager.dungeonPollCoroutine);
                     AddServerRPC();
                     LoadDungeons();
-                    DungeonManager.Instance.managers["TEST"].ScanChests();
                 }
                 if (!DynamicDungeons.IsServer)
                 {
                     AddClientRPC();
+                    SetVanillaReferences();
                 }
             }
         }

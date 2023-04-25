@@ -1,9 +1,8 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
-
 namespace DynamicDungeons
 {
-    public class DungeonSpawnArea : MonoBehaviour
+    public class DungeonSpawnArea : MonoBehaviour, Hoverable, Interactable
     {
         public class SpawnData
         {
@@ -18,14 +17,15 @@ namespace DynamicDungeons
 
         public DungeonEventManager m_manager;
         public List<SpawnData> m_prefabs = new List<SpawnData>();
-        public DynamicDungeons.MobTier m_tier;
+        public string m_tier;
 
-        public GameObject m_areaMarker;
+        public GameObject m_spawnRadiusMarker;
+        public GameObject m_triggerDistanceMarker;
         public float m_levelupChance = 15f;
 
         public float m_spawnIntervalSec = 30f;
 
-        public float m_triggerDistance = 256f;
+        public float m_triggerDistance = 10f;
 
         public bool m_setPatrolSpawnPoint = true;
 
@@ -33,7 +33,7 @@ namespace DynamicDungeons
 
         public float m_nearRadius = 8f;
 
-        public float m_farRadius = 15f;
+        public float m_farRadius = 8f;
 
         public int m_maxNear = 3;
 
@@ -44,28 +44,96 @@ namespace DynamicDungeons
         public EffectList m_spawnEffects = new EffectList();
 
         public ZNetView m_nview;
-
+        public bool m_editing = false;
         public float m_spawnTimer;
         public int m_minSpawned = 1;
         public int m_maxSpawned = 3;
+        private Player m_player;
+        private CircleProjector spawnProjector;
+        private CircleProjector triggerProjector;
         public void Awake()
         {
             m_nview = GetComponent<ZNetView>();
+            m_tier = base.gameObject.name.Split('_')[1].Split('(')[0];
+            Jotunn.Logger.LogInfo("Spawner is " + m_tier);
             InvokeRepeating("UpdateSpawn", 2f, 2f);
         }
         public void Start()
         {
+            GameObject segment = DynamicDungeons.workbenchMarker.GetComponent<CircleProjector>().m_prefab;
+            GameObject triggerSegment = Instantiate(segment);
+            triggerSegment.GetComponent<Renderer>().material.color = DynamicDungeons.tierColors[m_tier];
+            triggerSegment.name = "spawnersegment_" + m_tier;
+            m_spawnRadiusMarker = Instantiate(DynamicDungeons.workbenchMarker, base.transform);
+            spawnProjector = m_spawnRadiusMarker.GetComponent<CircleProjector>();
+            spawnProjector.m_radius = m_spawnRadius;
+            spawnProjector.m_nrOfSegments = Mathf.RoundToInt(m_spawnRadius * 4);
+            m_triggerDistanceMarker = Instantiate(DynamicDungeons.workbenchMarker, base.transform);
+            triggerProjector = m_triggerDistanceMarker.GetComponent<CircleProjector>();
+            Jotunn.Logger.LogInfo("Getting segment: " + "dungeonsegment_" + m_tier);
+            triggerProjector.m_prefab = triggerSegment;
+            triggerProjector.m_radius = m_triggerDistance;
+            triggerProjector.m_nrOfSegments = Mathf.RoundToInt(m_triggerDistance * 4);
             if (!m_nview || m_nview.GetZDO() != null)
             {
-                if (!(bool)m_areaMarker)
-                {
-                    m_areaMarker.SetActive(true);
-                }
+                if (!(bool)m_spawnRadiusMarker) m_spawnRadiusMarker.SetActive(true);
+                if (!(bool)m_triggerDistanceMarker) m_triggerDistanceMarker.SetActive(true);
             }
         }
+        public void Update()
+        {
+            if (!m_editing) return;
+            if (Input.GetKeyDown(KeyCode.KeypadPlus))
+            {
+                if (Input.GetKey(KeyCode.LeftShift))
+                {
+                    m_spawnRadius += 0.5f;
+                    spawnProjector.m_radius += 0.5f;
+                    Jotunn.Logger.LogInfo(GetHoverName() + "'s spawn radius increased to " + m_spawnRadius);
+                    return;
+                }
+                m_triggerDistance += 0.5f;
+                triggerProjector.m_radius += 0.5f;
+                Jotunn.Logger.LogInfo(GetHoverName() + "'s trigger radius increased to " + m_triggerDistance);
+                return;
+            }
+            if (Input.GetKeyDown(KeyCode.KeypadMinus))
+            {
+                if (Input.GetKey(KeyCode.LeftShift))
+                {
+                    m_spawnRadius -= 0.5f;
+                    spawnProjector.m_radius -= 0.5f;
+                    Jotunn.Logger.LogInfo(GetHoverName() + "'s spawn radius decreased to " + m_spawnRadius);
+                    return;
+                }
+                m_triggerDistance -= 0.5f;
+                triggerProjector.m_radius -= 0.5f;
+                Jotunn.Logger.LogInfo(GetHoverName() + "'s trigger radius decreased to " + m_triggerDistance);
+                return;
+            }
+        }
+        public string GetHoverName()
+        {
+            return m_tier + " Spawner";
+        }
+        public string GetHoverText()
+        {
+            if (m_editing) return Localization.instance.Localize("\n[<color=yellow><b>$KEY_Use</b></color>] ") + "Guardar " + m_tier + " Spawner";
+            return Localization.instance.Localize("\n[<color=yellow><b>$KEY_Use</b></color>] ") + "Editar " + m_tier + " Spawner";
+        }
+        public bool Interact(Humanoid other, bool hold, bool alt)
+        {
+            Player player = other.gameObject.GetComponent<Player>();
+            if (player == null) return false;
+            m_player = player;
+            Jotunn.Logger.LogInfo("Editing " + m_tier + " spawner: " + !m_editing);
+            m_editing = !m_editing;
+            return true;
+        }
+        public bool UseItem(Humanoid other, ItemDrop.ItemData item) { return false; }
         public void UpdateSpawn()
         {
-            if (m_nview.IsOwner() && !ZNetScene.instance.OutsideActiveArea(base.transform.position) && Player.IsPlayerInRange(base.transform.position, m_triggerDistance))
+            if (m_manager != null && m_manager.isActive && m_nview.IsOwner() && !ZNetScene.instance.OutsideActiveArea(base.transform.position) && Player.IsPlayerInRange(base.transform.position, m_triggerDistance))
             {
                 m_spawnTimer += 2f;
                 if (m_spawnTimer > m_spawnIntervalSec)
