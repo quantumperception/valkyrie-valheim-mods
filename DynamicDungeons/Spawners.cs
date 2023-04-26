@@ -20,6 +20,7 @@ namespace DynamicDungeons
         }
         public enum MobTier
         {
+            NONE,
             T1,
             T2,
             T3,
@@ -116,7 +117,7 @@ namespace DynamicDungeons
             public int spawnCooldown = 750;
             public float spawnRadius = 3f;
             public float scanRadius = 5f;
-            public List<SpawnData> mobs;
+            public List<DynamicDungeons.SpawnData> mobs;
         }
         public class StoredMobConfig
         {

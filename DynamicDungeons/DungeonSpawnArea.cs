@@ -1,26 +1,20 @@
-﻿using System.Collections.Generic;
+﻿using Jotunn.Utils;
+using System.Collections.Generic;
 using UnityEngine;
 namespace DynamicDungeons
 {
     public class DungeonSpawnArea : MonoBehaviour, Hoverable, Interactable
     {
-        public class SpawnData
-        {
-            public GameObject m_prefab;
-
-            public float m_weight;
-
-            public int m_maxLevel = 3;
-
-            public int m_minLevel = 1;
-        }
-
         public DungeonEventManager m_manager;
-        public List<SpawnData> m_prefabs = new List<SpawnData>();
+
+        public List<DynamicDungeons.SpawnData> m_prefabs = new List<DynamicDungeons.SpawnData>();
+
         public string m_tier;
 
         public GameObject m_spawnRadiusMarker;
+
         public GameObject m_triggerDistanceMarker;
+
         public float m_levelupChance = 15f;
 
         public float m_spawnIntervalSec = 30f;
@@ -44,18 +38,26 @@ namespace DynamicDungeons
         public EffectList m_spawnEffects = new EffectList();
 
         public ZNetView m_nview;
+
         public bool m_editing = false;
+
         public float m_spawnTimer;
+
         public int m_minSpawned = 1;
+
         public int m_maxSpawned = 3;
+
         private Player m_player;
+
         private CircleProjector spawnProjector;
+
         private CircleProjector triggerProjector;
+        public float m_resizeTimer = 0f;
+
+
         public void Awake()
         {
-            m_nview = GetComponent<ZNetView>();
-            m_tier = base.gameObject.name.Split('_')[1].Split('(')[0];
-            Jotunn.Logger.LogInfo("Spawner is " + m_tier);
+            Initialize();
             InvokeRepeating("UpdateSpawn", 2f, 2f);
         }
         public void Start()
@@ -70,7 +72,6 @@ namespace DynamicDungeons
             spawnProjector.m_nrOfSegments = Mathf.RoundToInt(m_spawnRadius * 4);
             m_triggerDistanceMarker = Instantiate(DynamicDungeons.workbenchMarker, base.transform);
             triggerProjector = m_triggerDistanceMarker.GetComponent<CircleProjector>();
-            Jotunn.Logger.LogInfo("Getting segment: " + "dungeonsegment_" + m_tier);
             triggerProjector.m_prefab = triggerSegment;
             triggerProjector.m_radius = m_triggerDistance;
             triggerProjector.m_nrOfSegments = Mathf.RoundToInt(m_triggerDistance * 4);
@@ -83,34 +84,92 @@ namespace DynamicDungeons
         public void Update()
         {
             if (!m_editing) return;
-            if (Input.GetKeyDown(KeyCode.KeypadPlus))
+            if (m_resizeTimer <= 0.25f) { m_resizeTimer += Time.deltaTime; return; }
+            if (m_resizeTimer > 0.25f) m_resizeTimer = 0f;
+            if (Input.GetKey(KeyCode.KeypadPlus))
             {
                 if (Input.GetKey(KeyCode.LeftShift))
                 {
-                    m_spawnRadius += 0.5f;
-                    spawnProjector.m_radius += 0.5f;
-                    Jotunn.Logger.LogInfo(GetHoverName() + "'s spawn radius increased to " + m_spawnRadius);
+                    IncreaseSpawnRadius();
                     return;
                 }
-                m_triggerDistance += 0.5f;
-                triggerProjector.m_radius += 0.5f;
-                Jotunn.Logger.LogInfo(GetHoverName() + "'s trigger radius increased to " + m_triggerDistance);
+                IncreaseTriggerRadius();
                 return;
             }
-            if (Input.GetKeyDown(KeyCode.KeypadMinus))
+            if (Input.GetKey(KeyCode.KeypadMinus))
             {
                 if (Input.GetKey(KeyCode.LeftShift))
                 {
-                    m_spawnRadius -= 0.5f;
-                    spawnProjector.m_radius -= 0.5f;
-                    Jotunn.Logger.LogInfo(GetHoverName() + "'s spawn radius decreased to " + m_spawnRadius);
+                    DecreaseSpawnRadius();
                     return;
                 }
-                m_triggerDistance -= 0.5f;
-                triggerProjector.m_radius -= 0.5f;
-                Jotunn.Logger.LogInfo(GetHoverName() + "'s trigger radius decreased to " + m_triggerDistance);
+                DecreaseTriggerRadius();
                 return;
             }
+        }
+        private void Initialize()
+        {
+            m_nview = GetComponent<ZNetView>();
+            m_tier = base.gameObject.name.Split('_')[1].Split('(')[0];
+            if (!m_nview || m_nview.GetZDO() != null)
+            {
+                InitializeManager();
+                DynamicDungeons.MobConfig mobConfig = DynamicDungeons.dungeons.Find(d => d.name == m_manager.dungeon.name).mobConfig[Util.StringToTier(m_tier)];
+                m_spawnRadius = mobConfig.spawnRadius;
+                m_triggerDistance = mobConfig.scanRadius;
+                InitializeRanges();
+                m_spawnIntervalSec = mobConfig.spawnCooldown;
+                m_maxNear = mobConfig.maxSpawned;
+                m_maxTotal = mobConfig.maxSpawned;
+                m_minSpawned = mobConfig.minAmount;
+                m_maxSpawned = mobConfig.maxAmount;
+                m_prefabs = mobConfig.mobs;
+                Jotunn.Logger.LogInfo("Loaded data for " + m_tier + " spawner");
+            }
+        }
+        private void InitializeManager()
+        {
+            string managerName64 = m_nview.GetZDO().GetString(DynamicDungeons.spawnerManagerHash);
+            ZPackage manPkg = new ZPackage(managerName64);
+            if (manPkg.Size() == 0) return;
+            string managerName = manPkg.ReadString();
+            m_manager = DungeonManager.Instance.managers[managerName];
+            Jotunn.Logger.LogInfo("Loaded manager " + m_manager.dungeon.name + " for " + m_tier + " spawner");
+        }
+        private void InitializeRanges()
+        {
+            string rangeData64 = m_nview.GetZDO().GetString(DynamicDungeons.spawnerDataHash);
+            ZPackage rangesPkg = new ZPackage(rangeData64);
+            if (rangesPkg.Size() == 0) return;
+            string newSpawnRadius = rangesPkg.ReadString();
+            string newTriggerDistance = rangesPkg.ReadString();
+            m_spawnRadius = float.Parse(newSpawnRadius);
+            m_triggerDistance = float.Parse(newTriggerDistance);
+            Jotunn.Logger.LogInfo("Loaded ranges for " + m_tier + " spawner");
+        }
+        private void IncreaseSpawnRadius()
+        {
+            m_spawnRadius += 0.5f;
+            spawnProjector.m_radius += 0.5f;
+            spawnProjector.m_nrOfSegments = Mathf.RoundToInt(m_spawnRadius * 4);
+        }
+        private void DecreaseSpawnRadius()
+        {
+            m_spawnRadius -= 0.5f;
+            spawnProjector.m_radius -= 0.5f;
+            spawnProjector.m_nrOfSegments = Mathf.RoundToInt(m_spawnRadius * 4);
+        }
+        private void IncreaseTriggerRadius()
+        {
+            m_triggerDistance += 0.5f;
+            triggerProjector.m_radius += 0.5f;
+            triggerProjector.m_nrOfSegments = Mathf.RoundToInt(m_triggerDistance * 4);
+        }
+        private void DecreaseTriggerRadius()
+        {
+            m_triggerDistance -= 0.5f;
+            triggerProjector.m_radius -= 0.5f;
+            triggerProjector.m_nrOfSegments = Mathf.RoundToInt(m_triggerDistance * 4);
         }
         public string GetHoverName()
         {
@@ -125,9 +184,20 @@ namespace DynamicDungeons
         {
             Player player = other.gameObject.GetComponent<Player>();
             if (player == null) return false;
+            m_nview.GetZDO().SetOwner((long)ReflectionHelper.InvokePrivate(ZRoutedRpc.instance, "GetServerPeerID"));
             m_player = player;
-            Jotunn.Logger.LogInfo("Editing " + m_tier + " spawner: " + !m_editing);
             m_editing = !m_editing;
+            Jotunn.Logger.LogInfo("Editing " + m_tier + " spawner: " + m_editing);
+            if (!m_editing)
+            {
+                ZPackage pkg = new ZPackage();
+                pkg.Write(m_spawnRadius.ToString());
+                pkg.Write(m_triggerDistance.ToString());
+                m_nview.GetZDO().Set(DynamicDungeons.spawnerDataHash, pkg.GetBase64());
+                Jotunn.Logger.LogInfo("Saved ranges to ZDO: " + m_nview.GetZDO().m_uid);
+                Jotunn.Logger.LogInfo("Spawn radius: " + m_spawnRadius);
+                Jotunn.Logger.LogInfo("Trigger radius: " + m_triggerDistance);
+            }
             return true;
         }
         public bool UseItem(Humanoid other, ItemDrop.ItemData item) { return false; }
@@ -165,16 +235,16 @@ namespace DynamicDungeons
 
         public GameObject SpawnOne()
         {
-            SpawnData spawnData = SelectWeightedPrefab();
+            DynamicDungeons.SpawnData spawnData = SelectWeightedPrefab();
             if (spawnData == null)
             {
                 return null;
             }
-            if (!FindSpawnPoint(spawnData.m_prefab, out var point))
+            if (!FindSpawnPoint(spawnData.prefab, out var point))
             {
                 return null;
             }
-            GameObject gameObject = Instantiate(spawnData.m_prefab, point, Quaternion.Euler(0f, Random.Range(0, 360), 0f));
+            GameObject gameObject = Instantiate(spawnData.prefab, point, Quaternion.Euler(0f, Random.Range(0, 360), 0f));
             if (m_setPatrolSpawnPoint)
             {
                 BaseAI ai = gameObject.GetComponent<BaseAI>();
@@ -184,10 +254,10 @@ namespace DynamicDungeons
                 }
             }
             Character character = gameObject.GetComponent<Character>();
-            if (spawnData.m_maxLevel > 1)
+            if (spawnData.maxLevel > 1)
             {
                 int i;
-                for (i = spawnData.m_minLevel; i < spawnData.m_maxLevel; i++)
+                for (i = spawnData.minLevel; i < spawnData.maxLevel; i++)
                 {
                     if (!(Random.Range(0f, 100f) <= m_levelupChance))
                     {
@@ -201,6 +271,7 @@ namespace DynamicDungeons
             }
             Vector3 centerPoint = character.GetCenterPoint();
             m_spawnEffects.Create(centerPoint, Quaternion.identity);
+            Jotunn.Logger.LogInfo(base.gameObject.name + " spawned " + gameObject.name);
             return gameObject;
         }
 
@@ -221,22 +292,22 @@ namespace DynamicDungeons
             return false;
         }
 
-        public SpawnData SelectWeightedPrefab()
+        public DynamicDungeons.SpawnData SelectWeightedPrefab()
         {
             if (m_prefabs.Count == 0)
             {
                 return null;
             }
             float num = 0f;
-            foreach (SpawnData prefab in m_prefabs)
+            foreach (DynamicDungeons.SpawnData prefab in m_prefabs)
             {
-                num += prefab.m_weight;
+                num += prefab.weight;
             }
             float num2 = UnityEngine.Random.Range(0f, num);
             float num3 = 0f;
-            foreach (SpawnData prefab2 in m_prefabs)
+            foreach (DynamicDungeons.SpawnData prefab2 in m_prefabs)
             {
-                num3 += prefab2.m_weight;
+                num3 += prefab2.weight;
                 if (num2 <= num3)
                 {
                     return prefab2;
@@ -271,9 +342,9 @@ namespace DynamicDungeons
         {
             string text = go.name;
             Character component = go.GetComponent<Character>();
-            foreach (SpawnData prefab in m_prefabs)
+            foreach (DynamicDungeons.SpawnData prefab in m_prefabs)
             {
-                if (text.StartsWith(prefab.m_prefab.name) && (!component || !component.IsTamed()))
+                if (text.StartsWith(prefab.prefab.name) && (!component || !component.IsTamed()))
                 {
                     return true;
                 }

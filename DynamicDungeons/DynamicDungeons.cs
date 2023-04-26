@@ -41,6 +41,8 @@ namespace DynamicDungeons
         public static readonly Dictionary<string, Color> tierColors = new Dictionary<string, Color>();
         public static readonly string[] normalChestPrefabs = { "piece_chest_wood", "stonechest" };
         public static GameObject workbenchMarker;
+        public static int spawnerDataHash = StringExtensionMethods.GetStableHashCode("dd_spawnradius");
+        public static int spawnerManagerHash = StringExtensionMethods.GetStableHashCode("dd_managername");
         private static Harmony harm = new Harmony("dynamicdungeons");
 
         public static bool IsServer
@@ -60,6 +62,7 @@ namespace DynamicDungeons
                 FileSystemWatcher watcher = new FileSystemWatcher(configPaths["dungeons"]);
                 watcher.Changed += new FileSystemEventHandler(OnDungeonConfigChange);
                 PrefabManager.OnVanillaPrefabsAvailable += DungeonManager.ScanDungeonChests;
+                PrefabManager.OnVanillaPrefabsAvailable += DungeonManager.ScanDungeonSpawners;
             }
             //AddPieceCategories();
             //bundle = AssetUtils.LoadAssetBundleFromResources("dungeonbundle");
@@ -67,7 +70,7 @@ namespace DynamicDungeons
             CreateSegments();
             AddCustomSpawners();
             CommandManager.Instance.AddConsoleCommand(new Commands.SavePrefabListCommand());
-            CommandManager.Instance.AddConsoleCommand(new Commands.LogDungeonInfoCommand());
+            CommandManager.Instance.AddConsoleCommand(new Commands.DynamicDungeonsCommand());
             harm.PatchAll();
         }
         private static void CreateSegments()

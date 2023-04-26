@@ -16,7 +16,7 @@ namespace DynamicDungeons
                 Jotunn.Logger.LogInfo("Saved prefabs list to config/listed_prefabs");
             }
         }
-        public class LogDungeonInfoCommand : ConsoleCommand
+        public class DynamicDungeonsCommand : ConsoleCommand
         {
             public override string Name => "dd";
 

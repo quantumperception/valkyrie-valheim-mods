@@ -6,6 +6,26 @@ namespace DynamicDungeons
 {
     public class Util
     {
+        public static DynamicDungeons.MobTier StringToTier(string tier)
+        {
+            switch (tier)
+            {
+                case "T1":
+                    return DynamicDungeons.MobTier.T1;
+                case "T2":
+                    return DynamicDungeons.MobTier.T2;
+                case "T3":
+                    return DynamicDungeons.MobTier.T3;
+                case "T4":
+                    return DynamicDungeons.MobTier.T4;
+                case "T5":
+                    return DynamicDungeons.MobTier.T5;
+                case "BOSS":
+                    return DynamicDungeons.MobTier.BOSS;
+                default:
+                    return DynamicDungeons.MobTier.NONE;
+            }
+        }
         public static void GetMinMaxCoords(Vector3 v1, Vector3 v2, out Vector3 minCoords, out Vector3 maxCoords)
         {
             float minX = v1.x < v2.x ? v1.x : v2.x;

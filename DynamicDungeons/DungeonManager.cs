@@ -29,6 +29,11 @@ namespace DynamicDungeons
             if (!DynamicDungeons.IsServer) return;
             foreach (DungeonEventManager manager in Instance.managers.Values) manager.ScanChests();
         }
+        public static void ScanDungeonSpawners()
+        {
+            if (!DynamicDungeons.IsServer) return;
+            foreach (DungeonEventManager manager in Instance.managers.Values) manager.ScanSpawners();
+        }
         public static IEnumerator WaitAndPollPlayers(int waitTime)
         {
             while (true)
@@ -113,6 +118,7 @@ namespace DynamicDungeons
             if (Instance.managers[dungeonName].isActive) { Jotunn.Logger.LogWarning("Event already active in " + dungeonName); return; }
             Jotunn.Logger.LogInfo("Started dungeon event at " + dungeonName);
             Instance.managers[dungeonName].isActive = true;
+            ZRoutedRpc.instance.InvokeRoutedRPC(uid, "DynamicDungeons DungeonUpdate", new object[] { dungeonName, DynamicDungeons.UpdateType.EventState, true });
             return;
         }
         public static void RPC_OnStopDungeonEvent(long uid, string dungeonName)
@@ -121,6 +127,7 @@ namespace DynamicDungeons
             if (!Instance.managers[dungeonName].isActive) { Jotunn.Logger.LogWarning("No active event in " + dungeonName); return; }
             Jotunn.Logger.LogInfo("Stopped dungeon event at " + dungeonName);
             Instance.managers[dungeonName].isActive = false;
+            ZRoutedRpc.instance.InvokeRoutedRPC(uid, "DynamicDungeons DungeonUpdate", new object[] { dungeonName, DynamicDungeons.UpdateType.EventState, false });
             return;
         }
         public static void OnDungeonUpdate(long uid, string dungeonName, DynamicDungeons.UpdateType type, object value)

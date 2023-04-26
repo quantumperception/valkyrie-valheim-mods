@@ -15,23 +15,14 @@ namespace DynamicDungeons
         private List<Container> specialChests = new List<Container>();
         private Dictionary<string, List<GameObject>> spawnedMobs = new Dictionary<string, List<GameObject>>();
         private float testTimer = 0f;
-        private readonly string[] tiers =
-        {
-            "Spawners_T1",
-            "Spawners_T2",
-            "Spawners_T3",
-            "Spawners_T4",
-            "Spawners_T5",
-            "Spawners_BOSS"
-        };
-        private void Start()
+        private void Awake()
         {
             spawners = new Dictionary<string, List<DungeonSpawnArea>>();
             spawnedMobs = new Dictionary<string, List<GameObject>>();
-            foreach (string tier in tiers)
+            foreach (string tier in DynamicDungeons.tiers)
             {
-                spawners.Add(tier, new List<DungeonSpawnArea>());
-                spawnedMobs.Add(tier, new List<GameObject>());
+                spawners.Add("DungeonSpawner_" + tier, new List<DungeonSpawnArea>());
+                spawnedMobs.Add("DungeonSpawner_" + tier, new List<GameObject>());
             }
         }
         private void Update()
@@ -39,12 +30,7 @@ namespace DynamicDungeons
             if (!DynamicDungeons.IsServer) return;
             if (!isActive) return;
             if (testTimer < 5) { testTimer += Time.deltaTime; return; }
-            if (!Util.FindSpawnPoint(base.gameObject.transform.position, 5, out Vector3 point))
-            {
-                Jotunn.Logger.LogInfo("Couldn't find spawn point for Greydwarf");
-                return;
-            }
-            Instantiate(PrefabManager.Instance.GetPrefab("Greydwarf"), point, Quaternion.Euler(0f, Random.Range(0, 360), 0f));
+            Instantiate(PrefabManager.Instance.GetPrefab("Greydwarf"), base.gameObject.transform.position, Quaternion.Euler(0f, Random.Range(0, 360), 0f));
             testTimer = 0;
             Jotunn.Logger.LogInfo("Spawned Greydwarf");
             return;
@@ -141,10 +127,9 @@ namespace DynamicDungeons
             if (colliders.Length == 0) { Jotunn.Logger.LogInfo("Didn't find anything inside dungeon area"); return; }
             if (normalChests.Count != 0) normalChests.Clear();
             if (specialChests.Count != 0) specialChests.Clear();
-            foreach (KeyValuePair<string, List<DungeonSpawnArea>> spawner in spawners) if (spawner.Value.Count != 0) spawner.Value.Clear();
             foreach (Collider other in colliders)
             {
-                Jotunn.Logger.LogInfo(dungeon.name + ": Found " + other.gameObject.name);
+                //Jotunn.Logger.LogInfo(dungeon.name + ": Found " + other.gameObject.name);
                 Player player = other.gameObject.GetComponent<Player>();
                 if (!DynamicDungeons.IsServer && player != null && player.m_name == Player.m_localPlayer.m_name)
                 {
@@ -157,6 +142,16 @@ namespace DynamicDungeons
                     Jotunn.Logger.LogInfo("Found normal chest");
                     normalChests.Add(other.gameObject.GetComponent<Container>());
                 };
+
+            }
+        }
+        public void ClientScanSpawners()
+        {
+            Collider[] colliders = Physics.OverlapBox(base.gameObject.transform.position, base.gameObject.transform.lossyScale / 2);
+            if (colliders.Length == 0) { Jotunn.Logger.LogInfo("Didn't find anything inside dungeon area"); return; }
+            foreach (KeyValuePair<string, List<DungeonSpawnArea>> spawner in spawners) if (spawner.Value.Count != 0) spawner.Value.Clear();
+            foreach (Collider other in colliders)
+            {
                 if (other.gameObject.name.Contains("DungeonSpawner_"))
                 {
                     Jotunn.Logger.LogInfo("Found " + other.gameObject.name);
@@ -164,22 +159,45 @@ namespace DynamicDungeons
                 };
             }
         }
+        public void ServerScanSpawners()
+        {
+            foreach (string tier in DynamicDungeons.tiers)
+            {
+                string prefabName = "DungeonSpawner_" + tier;
+                int hash = StringExtensionMethods.GetStableHashCode(prefabName);
+                List<ZDO> spawnerZdos = new ASPUtils.DungeonZdoQuery(dungeon.corners).GetZdosInDungeon(hash);
+                if (spawnerZdos.Count == 0) continue;
+                foreach (ZDO zdo in spawnerZdos)
+                {
+                    ZPackage pkg = new ZPackage();
+                    pkg.Write(dungeon.name);
+                    zdo.Set(DynamicDungeons.spawnerManagerHash, pkg.GetBase64());
+                    Jotunn.Logger.LogInfo("Set spawner manager to spawner ZDO id: " + zdo.m_uid);
+                }
+            }
+        }
         public void ScanChests()
         {
             if (DynamicDungeons.IsServer) ServerScanChests();
             else ClientScanChests();
         }
+        public void ScanSpawners()
+        {
+            if (DynamicDungeons.IsServer) ServerScanSpawners();
+            else ClientScanSpawners();
+        }
         public void LogDungeonInfo()
         {
             ScanChests();
+            ScanSpawners();
             Jotunn.Logger.LogInfo("Found " + normalChests.Count + " normal chests");
             Jotunn.Logger.LogInfo("Found " + specialChests.Count + " special chests");
-            Jotunn.Logger.LogInfo("Found " + spawners["Spawners_T1"].Count + " T1 spawners");
-            Jotunn.Logger.LogInfo("Found " + spawners["Spawners_T2"].Count + " T2 spawners");
-            Jotunn.Logger.LogInfo("Found " + spawners["Spawners_T3"].Count + " T3 spawners");
-            Jotunn.Logger.LogInfo("Found " + spawners["Spawners_T4"].Count + " T4 spawners");
-            Jotunn.Logger.LogInfo("Found " + spawners["Spawners_T5"].Count + " T5 spawners");
-            Jotunn.Logger.LogInfo("Found " + spawners["Spawners_BOSS"].Count + " BOSS spawners");
+            Jotunn.Logger.LogInfo("Found " + spawners["DungeonSpawner_T1"].Count + " T1 spawners");
+            Jotunn.Logger.LogInfo("Found " + spawners["DungeonSpawner_T2"].Count + " T2 spawners");
+            Jotunn.Logger.LogInfo("Found " + spawners["DungeonSpawner_T3"].Count + " T3 spawners");
+            Jotunn.Logger.LogInfo("Found " + spawners["DungeonSpawner_T4"].Count + " T4 spawners");
+            Jotunn.Logger.LogInfo("Found " + spawners["DungeonSpawner_T5"].Count + " T5 spawners");
+            Jotunn.Logger.LogInfo("Found " + spawners["DungeonSpawner_BOSS"].Count + " BOSS spawners");
         }
         public void StartEvent()
         {
@@ -194,22 +212,22 @@ namespace DynamicDungeons
         private void AddSpawnerToList(GameObject prefab)
         {
             DungeonSpawnArea spawner = prefab.GetComponent<DungeonSpawnArea>();
-            if (prefab.name.Contains("DungeonSpawner_T1")) spawners["Spawners_T1"].Add(spawner);
-            if (prefab.name.Contains("DungeonSpawner_T2")) spawners["Spawners_T2"].Add(spawner);
-            if (prefab.name.Contains("DungeonSpawner_T3")) spawners["Spawners_T3"].Add(spawner);
-            if (prefab.name.Contains("DungeonSpawner_T4")) spawners["Spawners_T4"].Add(spawner);
-            if (prefab.name.Contains("DungeonSpawner_T5")) spawners["Spawners_T5"].Add(spawner);
-            if (prefab.name.Contains("DungeonSpawner_BOSS")) spawners["Spawners_BOSS"].Add(spawner);
+            if (prefab.name.Contains("DungeonSpawner_T1")) spawners["DungeonSpawner_T1"].Add(spawner);
+            if (prefab.name.Contains("DungeonSpawner_T2")) spawners["DungeonSpawner_T2"].Add(spawner);
+            if (prefab.name.Contains("DungeonSpawner_T3")) spawners["DungeonSpawner_T3"].Add(spawner);
+            if (prefab.name.Contains("DungeonSpawner_T4")) spawners["DungeonSpawner_T4"].Add(spawner);
+            if (prefab.name.Contains("DungeonSpawner_T5")) spawners["DungeonSpawner_T5"].Add(spawner);
+            if (prefab.name.Contains("DungeonSpawner_BOSS")) spawners["DungeonSpawner_BOSS"].Add(spawner);
         }
         private void RemoveSpawnerFromList(GameObject prefab)
         {
             DungeonSpawnArea spawner = prefab.GetComponent<DungeonSpawnArea>();
-            if (prefab.name.Contains("DungeonSpawner_T1")) spawners["Spawners_T1"].Remove(spawner);
-            if (prefab.name.Contains("DungeonSpawner_T2")) spawners["Spawners_T2"].Remove(spawner);
-            if (prefab.name.Contains("DungeonSpawner_T3")) spawners["Spawners_T3"].Remove(spawner);
-            if (prefab.name.Contains("DungeonSpawner_T4")) spawners["Spawners_T4"].Remove(spawner);
-            if (prefab.name.Contains("DungeonSpawner_T5")) spawners["Spawners_T5"].Remove(spawner);
-            if (prefab.name.Contains("DungeonSpawner_BOSS")) spawners["Spawners_BOSS"].Remove(spawner);
+            if (prefab.name.Contains("DungeonSpawner_T1")) spawners["DungeonSpawner_T1"].Remove(spawner);
+            if (prefab.name.Contains("DungeonSpawner_T2")) spawners["DungeonSpawner_T2"].Remove(spawner);
+            if (prefab.name.Contains("DungeonSpawner_T3")) spawners["DungeonSpawner_T3"].Remove(spawner);
+            if (prefab.name.Contains("DungeonSpawner_T4")) spawners["DungeonSpawner_T4"].Remove(spawner);
+            if (prefab.name.Contains("DungeonSpawner_T5")) spawners["DungeonSpawner_T5"].Remove(spawner);
+            if (prefab.name.Contains("DungeonSpawner_BOSS")) spawners["DungeonSpawner_BOSS"].Remove(spawner);
         }
     }
 }
