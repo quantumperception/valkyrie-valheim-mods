@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Jotunn.Managers;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -6,6 +7,10 @@ namespace DynamicDungeons
 {
     public class Util
     {
+        public static bool IsServer()
+        {
+            return GUIManager.IsHeadless();
+        }
         public static DynamicDungeons.MobTier StringToTier(string tier)
         {
             switch (tier)
@@ -57,6 +62,55 @@ namespace DynamicDungeons
             File.WriteAllLines(Path.Combine(DynamicDungeons.configPath, "listed_prefabs", "mobs.txt"), mobs);
             File.WriteAllLines(Path.Combine(DynamicDungeons.configPath, "listed_prefabs", "others.txt"), others);
         }
+        public static void AddAnimsToList(ItemDrop.ItemData item, string prefabName, Dictionary<string, HashSet<string>> itemAnims, HashSet<string> allAttacks)
+        {
+            HashSet<string> anims = new HashSet<string>();
+            if (item.HavePrimaryAttack())
+            {
+                anims.Add(item.m_shared.m_attack.m_attackAnimation);
+                allAttacks.Add(item.m_shared.m_attack.m_attackAnimation);
+            }
+            if (item.HaveSecondaryAttack())
+            {
+                anims.Add(item.m_shared.m_secondaryAttack.m_attackAnimation);
+                allAttacks.Add(item.m_shared.m_secondaryAttack.m_attackAnimation);
+            }
+            if (item.HavePrimaryAttack() || item.HaveSecondaryAttack())
+            {
+                if (itemAnims.ContainsKey(prefabName)) foreach (string anim in anims) itemAnims[prefabName].Add(anim);
+                else itemAnims.Add(prefabName, anims);
+            }
+        }
+        public static void SaveAttackList()
+        {
+            HashSet<GameObject> items = new HashSet<GameObject>();
+            Dictionary<string, HashSet<string>> itemAnims = new Dictionary<string, HashSet<string>>();
+            HashSet<string> allAnims = new HashSet<string>();
+
+            foreach (GameObject prefab in ZNetScene.instance.m_prefabs)
+            {
+                Humanoid humanoid = prefab.GetComponent<Humanoid>();
+                if (humanoid != null)
+                {
+                    foreach (GameObject weapon in humanoid.m_randomWeapon) { items.Add(weapon); Jotunn.Logger.LogInfo("RandomWeapon: " + weapon.name); continue; }
+                    foreach (Humanoid.ItemSet set in humanoid.m_randomSets) { foreach (GameObject setItem in set.m_items) { items.Add(setItem); Jotunn.Logger.LogInfo("SetItem: " + setItem.name); continue; } }
+                }
+                if (prefab.GetComponent<ItemDrop>() != null) { items.Add(prefab); continue; }
+            }
+            if (!Directory.Exists(Path.Combine(DynamicDungeons.configPath, "saved_attacks")))
+                Directory.CreateDirectory(Path.Combine(DynamicDungeons.configPath, "saved_attacks"));
+            foreach (GameObject prefab in items)
+            {
+                ItemDrop.ItemData item = prefab.GetComponent<ItemDrop>().m_itemData;
+                Jotunn.Logger.LogInfo(prefab.name);
+                AddAnimsToList(item, prefab.name, itemAnims, allAnims);
+            }
+            foreach (KeyValuePair<string, HashSet<string>> itemAnim in itemAnims)
+            {
+                File.WriteAllLines(Path.Combine(DynamicDungeons.configPath, "saved_attacks", itemAnim.Key + ".txt"), itemAnim.Value);
+            }
+            File.WriteAllLines(Path.Combine(DynamicDungeons.configPath, "saved_attacks", "ALL.txt"), allAnims);
+        }
         public static bool FindSpawnPoint(Vector3 origin, float radius, out Vector3 point)
         {
             for (int i = 0; i < 10; i++)
@@ -74,7 +128,7 @@ namespace DynamicDungeons
         }
         public static bool IsAdmin()
         {
-            if (DynamicDungeons.IsServer) return true;
+            if (Util.IsServer()) return true;
             return Jotunn.Managers.SynchronizationManager.Instance.PlayerIsAdmin;
         }
         public static void KillLocalPlayer()

@@ -10,7 +10,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 namespace DynamicDungeons
 {
@@ -26,12 +25,12 @@ namespace DynamicDungeons
         private static AssetBundle bundle;
         private static GameObject dungeon;
         private static List<string> dungeonFiles;
-        private static Dictionary<string, string> storedDungeons = new Dictionary<string, string>();
+        public static Dictionary<string, string> storedDungeons = new Dictionary<string, string>();
         public static List<DynamicDungeon> dungeons = new List<DynamicDungeon>();
         public static DungeonEventManager currentDungeon;
         private static List<GameObject> boundingBoxes = new List<GameObject>();
         public static readonly string pluginPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        public static readonly string configPath = Path.GetFullPath(Path.Combine(pluginPath, @"..\", "config"));
+        public static readonly string configPath = Path.Combine(Directory.GetParent(pluginPath).FullName, "config");
         private static readonly string jsonConfigsPath = Path.Combine(configPath, "DynamicDungeons");
         private static readonly Dictionary<string, string> configPaths = new Dictionary<string, string>() {
             {"main",  Path.Combine(jsonConfigsPath, "main.json") },
@@ -39,28 +38,21 @@ namespace DynamicDungeons
         };
         public static readonly List<string> tiers = new List<string> { "T1", "T2", "T3", "T4", "T5", "BOSS", };
         public static readonly Dictionary<string, Color> tierColors = new Dictionary<string, Color>();
-        public static readonly string[] normalChestPrefabs = { "piece_chest_wood", "stonechest" };
+        public static readonly string[] normalChestPrefabs = { "$custompiece_stonechest" };
         public static GameObject workbenchMarker;
         public static int spawnerDataHash = StringExtensionMethods.GetStableHashCode("dd_spawnradius");
         public static int spawnerManagerHash = StringExtensionMethods.GetStableHashCode("dd_managername");
         private static Harmony harm = new Harmony("dynamicdungeons");
 
-        public static bool IsServer
-        {
-            get
-            {
-                return SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null;
-            }
-        }
-
         private void Awake()
         {
             FillTierColors();
-            if (DynamicDungeons.IsServer)
+            if (Util.IsServer())
             {
                 TryCreateConfigs();
                 FileSystemWatcher watcher = new FileSystemWatcher(configPaths["dungeons"]);
                 watcher.Changed += new FileSystemEventHandler(OnDungeonConfigChange);
+                watcher.EnableRaisingEvents = true;
                 PrefabManager.OnVanillaPrefabsAvailable += DungeonManager.ScanDungeonChests;
                 PrefabManager.OnVanillaPrefabsAvailable += DungeonManager.ScanDungeonSpawners;
             }
@@ -71,6 +63,7 @@ namespace DynamicDungeons
             AddCustomSpawners();
             CommandManager.Instance.AddConsoleCommand(new Commands.SavePrefabListCommand());
             CommandManager.Instance.AddConsoleCommand(new Commands.DynamicDungeonsCommand());
+            CommandManager.Instance.AddConsoleCommand(new Commands.SaveAttackListCommand());
             harm.PatchAll();
         }
         private static void CreateSegments()
@@ -82,7 +75,6 @@ namespace DynamicDungeons
                 segment.transform.localScale = new Vector3(0.15f, 0.1f, 1f);
                 segment.GetComponent<Renderer>().material.color = tierColor.Value;
                 segment.name = "spawnersegment_" + tierColor.Key;
-                Jotunn.Logger.LogInfo("Added segment: " + segment.name);
                 PrefabManager.Instance.AddPrefab(segment);
             }
             GameObject whiteSegment = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -94,7 +86,6 @@ namespace DynamicDungeons
         private static void SetVanillaReferences()
         {
             workbenchMarker = ZNetScene.instance.m_prefabs.Find(p => p.name == "piece_workbench").GetComponent<CraftingStation>().m_areaMarker;
-            Jotunn.Logger.LogInfo("Set workbench marker");
         }
         private static void FillTierColors()
         {
@@ -109,11 +100,14 @@ namespace DynamicDungeons
         }
         private static void OnDungeonConfigChange(object sender, FileSystemEventArgs e)
         {
-            Jotunn.Logger.LogInfo("Got file change: " + e.Name);
-            string dungeonJson = File.ReadAllText(e.FullPath);
-            DynamicDungeon dungeon = DungeonFromJson(dungeonJson);
-            UpdateDungeon(dungeon);
-            SendDungeonToPeer(ZRoutedRpc.Everybody, dungeon);
+            if (e.ChangeType == WatcherChangeTypes.Changed)
+            {
+                Jotunn.Logger.LogInfo("Got file change: " + e.Name);
+                string dungeonJson = File.ReadAllText(e.FullPath);
+                DynamicDungeon dungeon = DungeonFromJson(dungeonJson);
+                UpdateDungeon(dungeon);
+                SendDungeonToPeer(ZRoutedRpc.Everybody, dungeon);
+            }
         }
         private static void CreateDungeonBoundingBoxes()
         {
@@ -160,6 +154,8 @@ namespace DynamicDungeons
 
         private static void TryCreateConfigs()
         {
+            Jotunn.Logger.LogInfo(pluginPath);
+            Jotunn.Logger.LogInfo(configPath);
             if (!Directory.Exists(configPath)) { Jotunn.Logger.LogError("DynamicDungeons' DLL must be directly in the plugins folder."); return; }
             if (!Directory.Exists(jsonConfigsPath)) Directory.CreateDirectory(jsonConfigsPath);
             if (!Directory.Exists(configPaths["dungeons"])) Directory.CreateDirectory(configPaths["dungeons"]);
@@ -249,60 +245,101 @@ namespace DynamicDungeons
         //    dungeonConfig.ClearArea = false;
         //    ZoneManager.Instance.AddCustomLocation(new CustomLocation(dungeon, false, dungeonConfig));
         //}
-        private static DynamicDungeon DungeonFromJson(string dungeonJson)
+        public static DynamicDungeon DungeonFromJson(string dungeonJson)
         {
             var sdc = JsonConvert.DeserializeObject<StoredDungeonConfig>(dungeonJson);
+            Jotunn.Logger.LogInfo($"Read {sdc.name} json");
             if (storedDungeons.ContainsKey(sdc.name)) storedDungeons.Remove(sdc.name);
             storedDungeons.Add(sdc.name, dungeonJson);
-            Dictionary<MobTier, MobConfig> _mobConfig = new Dictionary<MobTier, MobConfig>();
+            Jotunn.Logger.LogInfo($"Initializing {sdc.name}");
+            Dictionary<string, MobConfig> _mobConfig = new Dictionary<string, MobConfig>();
             List<ChestItemData> normalChestItems = new List<ChestItemData>();
             List<ChestItemData> specialChestItems = new List<ChestItemData>();
+
             foreach (KeyValuePair<string, StoredMobConfig> smc in sdc.mobConfig)
             {
-                MobTier tier = new MobTier();
-                Dictionary<MobTier, List<SpawnData>> mobs = new Dictionary<MobTier, List<SpawnData>>
+                string tier = "";
+                Dictionary<string, List<SpawnData>> mobs = new Dictionary<string, List<SpawnData>>
                     {
-                        {MobTier.T1, new List<SpawnData>() },
-                        {MobTier.T2, new List<SpawnData>() },
-                        {MobTier.T3, new List<SpawnData>() },
-                        {MobTier.T4, new List<SpawnData>() },
-                        {MobTier.T5, new List<SpawnData>() },
-                        {MobTier.BOSS, new List<SpawnData>() },
+                        {"T1", new List<SpawnData>() },
+                        {"T2", new List<SpawnData>() },
+                        {"T3", new List<SpawnData>() },
+                        {"T4", new List<SpawnData>() },
+                        {"T5", new List<SpawnData>() },
+                        {"BOSS", new List<SpawnData>() },
                     };
                 switch (smc.Key)
                 {
                     case "tier1":
-                        tier = MobTier.T1;
+                        tier = "T1";
                         break;
                     case "tier2":
-                        tier = MobTier.T2;
+                        tier = "T2";
                         break;
                     case "tier3":
-                        tier = MobTier.T3;
+                        tier = "T3";
                         break;
                     case "tier4":
-                        tier = MobTier.T4;
+                        tier = "T4";
                         break;
                     case "tier5":
-                        tier = MobTier.T5;
+                        tier = "T5";
                         break;
                     case "boss":
-                        tier = MobTier.BOSS;
+                        tier = "BOSS";
                         break;
                 }
-                List<SpawnData> currentTier = new List<SpawnData>();
+                List<SpawnData> currentSpawnTier = new List<SpawnData>();
+                List<CharacterDrop.Drop> currentDropTier = new List<CharacterDrop.Drop>();
+                Jotunn.Logger.LogInfo($"Setting {sdc.name} dropConfig");
+                foreach (StoredDropConfig drop in smc.Value.tierDrops)
+                {
+                    GameObject dropPrefab = PrefabManager.Instance.GetPrefab(drop.prefab);
+                    if (dropPrefab == null) Jotunn.Logger.LogWarning($"Found invalid prefab {drop.prefab} in {sdc.name}'s dropConfig");
+                    currentDropTier.Add(new CharacterDrop.Drop
+                    {
+                        m_prefab = dropPrefab,
+                        m_amountMin = drop.minAmount,
+                        m_amountMax = drop.maxAmount,
+                        m_chance = drop.dropChance,
+                        m_levelMultiplier = drop.levelMultiplier,
+                        m_onePerPlayer = drop.onePerPlayer
+                    });
+                }
+                Jotunn.Logger.LogInfo($"Setting {sdc.name} {tier} mobConfig");
                 foreach (StoredSpawnData mob in smc.Value.mobs)
                 {
-                    if (IsServer || true) Jotunn.Logger.LogInfo("Adding prefab | " + mob.prefab + " | to dungeon's " + sdc.name + " " + tier + " mobs.");
-                    mobs.TryGetValue(tier, out currentTier);
-                    currentTier.Add(new SpawnData
+                    GameObject mobPrefab = PrefabManager.Instance.GetPrefab(mob.prefab);
+                    List<CharacterDrop.Drop> mobDrops = new List<CharacterDrop.Drop>();
+                    if (mobPrefab == null) { Jotunn.Logger.LogWarning("Found invalid prefab | " + mob.prefab + " | in dungeon's " + sdc.name + " " + tier + " mobs."); }
+                    if (Util.IsServer() || true) Jotunn.Logger.LogInfo("Adding prefab | " + mob.prefab + " | to dungeon's " + sdc.name + " " + tier + " mobs.");
+                    mobs.TryGetValue(tier, out currentSpawnTier);
+                    Jotunn.Logger.LogInfo($"Reading ${mob.prefab} {tier} dropConfig");
+                    foreach (StoredDropConfig drop in mob.drops)
                     {
-                        prefab = PrefabManager.Instance.GetPrefab(mob.prefab),
+                        GameObject itemPrefab = PrefabManager.Instance.GetPrefab(drop.prefab);
+                        if (itemPrefab == null) { Jotunn.Logger.LogWarning("Found invalid drop | " + drop.prefab + " | in dungeon's " + sdc.name + " " + mob.prefab + " mob drops."); }
+                        mobDrops.Add(new CharacterDrop.Drop
+                        {
+                            m_prefab = itemPrefab,
+                            m_amountMin = drop.minAmount,
+                            m_amountMax = drop.maxAmount,
+                            m_chance = drop.dropChance,
+                            m_levelMultiplier = drop.levelMultiplier,
+                            m_onePerPlayer = drop.onePerPlayer
+                        });
+
+                    }
+                    Jotunn.Logger.LogInfo($"Set ${mob.prefab} {tier} dropConfig");
+
+                    currentSpawnTier.Add(new SpawnData
+                    {
+                        prefab = mobPrefab,
                         weight = mob.weight,
                         minLevel = mob.minLevel,
-                        maxLevel = mob.maxLevel
+                        maxLevel = mob.maxLevel,
+                        drops = mobDrops
                     });
-
                 }
                 _mobConfig.Add(tier, new MobConfig
                 {
@@ -312,35 +349,44 @@ namespace DynamicDungeons
                     spawnCooldown = smc.Value.spawnCooldown,
                     spawnRadius = smc.Value.spawnRadius,
                     scanRadius = smc.Value.scanRadius,
-                    mobs = currentTier,
+                    mobs = currentSpawnTier,
+                    tierDrops = currentDropTier,
                 });
 
             }
+            Jotunn.Logger.LogInfo($"Setting {sdc.name} normal chest items");
             foreach (StoredChestItemData cid in sdc.normalChest.items)
             {
-                if (IsServer || true) Jotunn.Logger.LogInfo("Adding prefab | " + cid.prefab + " | to dungeon's " + sdc.name + " NORMAL chest items.");
+                GameObject itemPrefab = PrefabManager.Instance.GetPrefab(cid.prefab);
+                if (itemPrefab == null) { Jotunn.Logger.LogWarning("Found invalid prefab | " + cid.prefab + " | in dungeon's " + sdc.name + " NORMAL chest items."); }
+                if (Util.IsServer() || true) Jotunn.Logger.LogInfo("Adding prefab | " + cid.prefab + " | to dungeon's " + sdc.name + " NORMAL chest items.");
                 normalChestItems.Add(new ChestItemData
                 {
-                    prefab = PrefabManager.Instance.GetPrefab(cid.prefab),
+                    prefab = itemPrefab,
                     weight = cid.weight,
                     minAmount = cid.minAmount,
                     maxAmount = cid.maxAmount
                 });
             }
+            Jotunn.Logger.LogInfo($"Setting {sdc.name} special chest items");
+
             if (sdc.specialChest != null)
             {
                 foreach (StoredChestItemData cid in sdc.specialChest.items)
                 {
-                    if (IsServer || true) Jotunn.Logger.LogInfo("Adding prefab | " + cid.prefab + " | to dungeon's " + sdc.name + " SPECIAL chest items.");
+                    GameObject itemPrefab = PrefabManager.Instance.GetPrefab(cid.prefab);
+                    if (itemPrefab == null) { Jotunn.Logger.LogWarning("Found invalid prefab | " + cid.prefab + " | in dungeon's " + sdc.name + " SPECIAL chest items."); }
+                    if (Util.IsServer() || true) Jotunn.Logger.LogInfo("Adding prefab | " + cid.prefab + " | to dungeon's " + sdc.name + " SPECIAL chest items.");
                     specialChestItems.Add(new ChestItemData
                     {
-                        prefab = PrefabManager.Instance.GetPrefab(cid.prefab),
+                        prefab = itemPrefab,
                         weight = cid.weight,
                         minAmount = cid.minAmount,
                         maxAmount = cid.maxAmount
                     });
                 }
             }
+            Jotunn.Logger.LogInfo($"Loaded new dungeon {sdc.name}");
             return new DynamicDungeon
             {
                 name = sdc.name,
@@ -369,9 +415,8 @@ namespace DynamicDungeons
             if (dungeonFiles.Count == 0) { Jotunn.Logger.LogInfo("No dungeon config files found"); return; }
             foreach (string file in dungeonFiles)
             {
-                Jotunn.Logger.LogInfo("Parsing dungeon file: " + file);
                 string dungeonJson = File.ReadAllText(file);
-                //var sdc = (StoredDungeonConfig)SimpleJson.SimpleJson.DeserializeObject(File.ReadAllText(file), typeof(StoredDungeonConfig));
+                Jotunn.Logger.LogInfo("Parsing dungeon file: " + file);
                 DynamicDungeon dungeon = DungeonFromJson(dungeonJson);
                 dungeons.Add(dungeon);
                 Jotunn.Logger.LogInfo("Added dungeon " + dungeon.name);
@@ -410,7 +455,7 @@ namespace DynamicDungeons
             ZRoutedRpc.instance.Register("DynamicDungeons TeleportToCoords", new Action<long, ZPackage>(DungeonManager.TeleportToCoords));
             ZRoutedRpc.instance.Register("DynamicDungeons PollPlayer", new Action<long>(DungeonManager.PollPlayer));
             ZRoutedRpc.instance.Register("DynamicDungeons ReceivedDungeon", new Action<long, ZPackage>(DungeonManager.OnReceivedDungeon));
-            ZRoutedRpc.instance.Register("DynamicDungeons DungeonUpdate", new Action<long, string, UpdateType, object>(DungeonManager.OnDungeonUpdate));
+            ZRoutedRpc.instance.Register("DynamicDungeons DungeonUpdate", new Action<long, string, string, ZPackage>(DungeonManager.OnDungeonUpdate));
             ZRoutedRpc.instance.Register("DynamicDungeons DungeonCompleted", new Action<long, string>(DungeonManager.OnDungeonCompleted));
             ZRoutedRpc.instance.Register("DynamicDungeons DungeonFailed", new Action<long, string>(DungeonManager.OnDungeonFailed));
         }
@@ -424,6 +469,7 @@ namespace DynamicDungeons
         }
         public static void DeserializeDungeon(ZPackage zip)
         {
+            Jotunn.Logger.LogInfo("Deserializing dungeon update from server");
             DynamicDungeon dungeon = DungeonFromJson(zip.ReadCompressedPackage().ReadString());
             UpdateDungeon(dungeon);
             Jotunn.Logger.LogInfo("Got dungeon " + dungeon.name + " from server");
@@ -433,7 +479,11 @@ namespace DynamicDungeons
             DynamicDungeon oldDungeon = dungeons.Find(d => d.name == dungeon.name);
             if (oldDungeon != null) dungeons.Remove(oldDungeon);
             dungeons.Add(dungeon);
-            if (DungeonManager.Instance.managers.ContainsKey(dungeon.name)) DungeonManager.Instance.managers.Remove(dungeon.name);
+            if (DungeonManager.Instance.managers.ContainsKey(dungeon.name))
+            {
+                DungeonManager.Instance.managers[dungeon.name].gameObject.SetActive(false);
+                DungeonManager.Instance.managers.Remove(dungeon.name);
+            }
             GameObject boundingBox = CreateBoundingBox(dungeon);
             GameObject oldBoundingBox = boundingBoxes.Find(bb => bb.name == boundingBox.name);
             if (oldBoundingBox != null) boundingBoxes.Remove(oldBoundingBox);
@@ -449,21 +499,24 @@ namespace DynamicDungeons
         }
         public static void SendDungeonToPeer(long peer, DynamicDungeon dungeon)
         {
+            Jotunn.Logger.LogInfo("Updating " + dungeon.name + " to " + peer);
             ZRoutedRpc.instance.InvokeRoutedRPC(peer, "DynamicDungeons ReceivedDungeon", SerializeDungeon(dungeon));
         }
         [HarmonyPatch(typeof(ZNet), nameof(ZNet.Start))]
         private static class ZNetStartPatch
         {
-            private static void Postfix()
+            private static void Postfix(ZNet __instance)
             {
-                if (DynamicDungeons.IsServer)
+                if (Util.IsServer())
                 {
+                    Jotunn.Logger.LogInfo("Registering Server RPCs");
                     //Game.instance.StartCoroutine(DungeonManager.dungeonPollCoroutine);
                     AddServerRPC();
                     LoadDungeons();
                 }
-                if (!DynamicDungeons.IsServer)
+                if (!Util.IsServer())
                 {
+                    Jotunn.Logger.LogInfo("Registering Client RPCs");
                     AddClientRPC();
                     SetVanillaReferences();
                 }
@@ -486,7 +539,7 @@ namespace DynamicDungeons
         {
             private static void Postfix(ZRpc rpc)
             {
-                if (!IsServer) return;
+                if (!Util.IsServer()) return;
                 ZNetPeer peer = ZNet.instance.GetPeerByHostName(rpc.GetSocket().GetHostName());
                 SendDungeonsToPeer(peer.m_uid);
             }

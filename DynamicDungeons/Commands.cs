@@ -16,6 +16,18 @@ namespace DynamicDungeons
                 Jotunn.Logger.LogInfo("Saved prefabs list to config/listed_prefabs");
             }
         }
+        public class SaveAttackListCommand : ConsoleCommand
+        {
+            public override string Name => "save_attacks";
+
+            public override string Help => "Saves all attack names to config/saved_attacks";
+
+            public override void Run(string[] args)
+            {
+                Util.SaveAttackList();
+                Jotunn.Logger.LogInfo("Saved attack list to config/saved_attacks");
+            }
+        }
         public class DynamicDungeonsCommand : ConsoleCommand
         {
             public override string Name => "dd";

@@ -14,7 +14,6 @@ namespace DynamicDungeons
         private List<Container> normalChests = new List<Container>();
         private List<Container> specialChests = new List<Container>();
         private Dictionary<string, List<GameObject>> spawnedMobs = new Dictionary<string, List<GameObject>>();
-        private float testTimer = 0f;
         private void Awake()
         {
             spawners = new Dictionary<string, List<DungeonSpawnArea>>();
@@ -27,34 +26,26 @@ namespace DynamicDungeons
         }
         private void Update()
         {
-            if (!DynamicDungeons.IsServer) return;
+            if (!Util.IsServer()) return;
             if (!isActive) return;
-            if (testTimer < 5) { testTimer += Time.deltaTime; return; }
-            Instantiate(PrefabManager.Instance.GetPrefab("Greydwarf"), base.gameObject.transform.position, Quaternion.Euler(0f, Random.Range(0, 360), 0f));
-            testTimer = 0;
-            Jotunn.Logger.LogInfo("Spawned Greydwarf");
             return;
 
         }
         private void OnTriggerEnter(Collider other)
         {
             Player player = other.gameObject.GetComponent<Player>();
-            if (!DynamicDungeons.IsServer && player != null && player.m_name == Player.m_localPlayer.m_name)
+            if (!Util.IsServer() && DynamicDungeons.currentDungeon == null && player != null && player.m_name == Player.m_localPlayer.m_name)
             {
                 ZRoutedRpc.instance.InvokeRoutedRPC("DynamicDungeons EnteredDungeon", dungeon.name);
-                DynamicDungeons.currentDungeon = this;
-                Player.m_localPlayer.Message(MessageHud.MessageType.Center, "Entrando a " + dungeon.name);
                 return;
             };
         }
         private void OnTriggerExit(Collider other)
         {
             Player player = other.gameObject.GetComponent<Player>();
-            if (!DynamicDungeons.IsServer && player != null && player.m_name == Player.m_localPlayer.m_name)
+            if (!Util.IsServer() && DynamicDungeons.currentDungeon == this && player != null && player.m_name == Player.m_localPlayer.m_name)
             {
                 ZRoutedRpc.instance.InvokeRoutedRPC("DynamicDungeons ExitedDungeon", dungeon.name);
-                DynamicDungeons.currentDungeon = null;
-                Player.m_localPlayer.Message(MessageHud.MessageType.Center, "Saliendo de " + dungeon.name);
                 return;
             };
         }
@@ -131,7 +122,7 @@ namespace DynamicDungeons
             {
                 //Jotunn.Logger.LogInfo(dungeon.name + ": Found " + other.gameObject.name);
                 Player player = other.gameObject.GetComponent<Player>();
-                if (!DynamicDungeons.IsServer && player != null && player.m_name == Player.m_localPlayer.m_name)
+                if (!Util.IsServer() && player != null && player.m_name == Player.m_localPlayer.m_name)
                 {
                     ZRoutedRpc.instance.InvokeRoutedRPC("DynamicDungeons EnteredDungeon", dungeon.name);
                     return;
@@ -178,12 +169,12 @@ namespace DynamicDungeons
         }
         public void ScanChests()
         {
-            if (DynamicDungeons.IsServer) ServerScanChests();
+            if (Util.IsServer()) ServerScanChests();
             else ClientScanChests();
         }
         public void ScanSpawners()
         {
-            if (DynamicDungeons.IsServer) ServerScanSpawners();
+            if (Util.IsServer()) ServerScanSpawners();
             else ClientScanSpawners();
         }
         public void LogDungeonInfo()
@@ -212,6 +203,8 @@ namespace DynamicDungeons
         private void AddSpawnerToList(GameObject prefab)
         {
             DungeonSpawnArea spawner = prefab.GetComponent<DungeonSpawnArea>();
+            spawner.m_manager = this;
+            Jotunn.Logger.LogInfo("Set spawner manager for " + prefab.name);
             if (prefab.name.Contains("DungeonSpawner_T1")) spawners["DungeonSpawner_T1"].Add(spawner);
             if (prefab.name.Contains("DungeonSpawner_T2")) spawners["DungeonSpawner_T2"].Add(spawner);
             if (prefab.name.Contains("DungeonSpawner_T3")) spawners["DungeonSpawner_T3"].Add(spawner);
