@@ -7,6 +7,10 @@ namespace DynamicDungeons
 {
     public class Util
     {
+        public static void EnsureDirectoryExists(string path)
+        {
+            if (!Directory.Exists(path)) Directory.CreateDirectory(path);
+        }
         public static bool IsServer()
         {
             return GUIManager.IsHeadless();
@@ -141,7 +145,7 @@ namespace DynamicDungeons
         }
         public static void SendPlayerMessage(long uid, MessageHud.MessageType type, string msg)
         {
-            ZRoutedRpc.instance.InvokeRoutedRPC(uid, "Message", type, msg); return;
+            ZRoutedRpc.instance.InvokeRoutedRPC(uid, "DynamicDungeons Message", type, msg); return;
         }
         public static void SendPlayerChatMessage(long uid, string msg, string username = "DynamicDungeons")
         {

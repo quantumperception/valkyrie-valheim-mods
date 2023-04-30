@@ -32,9 +32,10 @@ namespace DynamicDungeons
         public static readonly string pluginPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
         public static readonly string configPath = Path.Combine(Directory.GetParent(pluginPath).FullName, "config");
         private static readonly string jsonConfigsPath = Path.Combine(configPath, "DynamicDungeons");
-        private static readonly Dictionary<string, string> configPaths = new Dictionary<string, string>() {
+        public static readonly Dictionary<string, string> configPaths = new Dictionary<string, string>() {
             {"main",  Path.Combine(jsonConfigsPath, "main.json") },
             {"dungeons", Path.Combine(jsonConfigsPath, "dungeons") },
+            {"cooldowns", Path.Combine(jsonConfigsPath, "cooldowns") },
         };
         public static readonly List<string> tiers = new List<string> { "T1", "T2", "T3", "T4", "T5", "BOSS", };
         public static readonly Dictionary<string, Color> tierColors = new Dictionary<string, Color>();
@@ -458,6 +459,7 @@ namespace DynamicDungeons
             ZRoutedRpc.instance.Register("DynamicDungeons DungeonUpdate", new Action<long, string, string, ZPackage>(DungeonManager.OnDungeonUpdate));
             ZRoutedRpc.instance.Register("DynamicDungeons DungeonCompleted", new Action<long, string>(DungeonManager.OnDungeonCompleted));
             ZRoutedRpc.instance.Register("DynamicDungeons DungeonFailed", new Action<long, string>(DungeonManager.OnDungeonFailed));
+            ZRoutedRpc.instance.Register("DynamicDungeons Message", new Action<long, MessageHud.MessageType, string>(DungeonManager.ShowMessage));
         }
         public static ZPackage SerializeDungeon(DynamicDungeon dungeon)
         {

@@ -1,4 +1,5 @@
 ﻿using Jotunn.Managers;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -22,7 +23,6 @@ namespace DynamicDungeons
         public static List<long> declineduids = new List<long>();
         private void Awake()
         {
-
         }
         public static void ScanDungeonChests()
         {
@@ -58,6 +58,28 @@ namespace DynamicDungeons
 
             }
             return;
+        }
+        private void RPC_AddPlayerCooldown(long uid, string dungeonName, int minutes)
+        {
+            ZNetPeer peer = ZNet.instance.m_peers.Find(p => p.m_uid == uid);
+            uint playerZdoId = peer.m_characterID.m_id;
+            DungeonEventManager manager = Instance.managers[dungeonName];
+            manager.playerCooldowns[playerZdoId] = new DungeonEventManager.CooldownData
+            {
+                playerName = peer.m_playerName,
+                cooldownEnd = ((DateTime)manager.playerCooldowns[playerZdoId].cooldownEnd).AddMinutes(minutes)
+            };
+        }
+        private void RPC_RemovePlayerCooldown(long uid, string dungeonName, int minutes)
+        {
+            ZNetPeer peer = ZNet.instance.m_peers.Find(p => p.m_uid == uid);
+            uint playerZdoId = peer.m_characterID.m_id;
+            DungeonEventManager manager = Instance.managers[dungeonName];
+            manager.playerCooldowns[playerZdoId] = new DungeonEventManager.CooldownData
+            {
+                playerName = peer.m_playerName,
+                cooldownEnd = ((DateTime)manager.playerCooldowns[playerZdoId].cooldownEnd).AddMinutes(-minutes)
+            };
         }
 
         public static void RPC_RequestInfo(long uid, string dungeonName)
@@ -180,6 +202,10 @@ namespace DynamicDungeons
         {
             declineduids.Add(uid);
             Jotunn.Logger.LogInfo("Raid declined:  " + uid);
+        }
+        public static void ShowMessage(long uid, MessageHud.MessageType type, string msg)
+        {
+            Player.m_localPlayer.Message(type, msg);
         }
         public static void PollPlayer(long sender)
         {

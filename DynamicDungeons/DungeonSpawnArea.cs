@@ -57,6 +57,8 @@ namespace DynamicDungeons
         private DynamicDungeons.CustomCircleProjector triggerProjector;
         public float m_resizeTimer = 0f;
         public bool m_snap = true;
+        public bool m_spawned = false;
+        public SphereCollider detectorCollider;
 
 
         public void Awake()
@@ -75,6 +77,12 @@ namespace DynamicDungeons
                 if (!(bool)m_spawnRadiusMarker) m_spawnRadiusMarker.SetActive(true);
                 if (!(bool)m_triggerDistanceMarker) m_triggerDistanceMarker.SetActive(true);
             }
+            detectorCollider = new SphereCollider
+            {
+                name = this.gameObject.name + "_Detector",
+                radius = m_triggerDistance,
+                isTrigger = true
+            };
         }
         public void SetupVanillaProjectors()
         {
@@ -129,6 +137,15 @@ namespace DynamicDungeons
                 DecreaseTriggerRadius();
                 return;
             }
+        }
+        private void OnTriggerEnter()
+        {
+            if (!m_spawned) UpdateSpawn();
+            m_spawned = true;
+        }
+        private void OnTriggerExit()
+        {
+            if (m_spawned) m_spawned = false;
         }
         private void Initialize()
         {
@@ -209,6 +226,7 @@ namespace DynamicDungeons
         private void IncreaseTriggerRadius()
         {
             m_triggerDistance += 0.5f;
+            detectorCollider.radius += 0.5f;
             triggerProjector.m_radius += 0.5f;
             triggerProjector.m_nrOfSegments = Mathf.RoundToInt(m_triggerDistance * 4);
             vanillaTriggerProjector.m_radius += 0.5f;
@@ -217,6 +235,7 @@ namespace DynamicDungeons
         private void DecreaseTriggerRadius()
         {
             m_triggerDistance -= 0.5f;
+            detectorCollider.radius -= 0.5f;
             triggerProjector.m_radius -= 0.5f;
             triggerProjector.m_nrOfSegments = Mathf.RoundToInt(m_triggerDistance * 4);
             vanillaTriggerProjector.m_radius -= 0.5f;

@@ -1,6 +1,9 @@
 ﻿using Jotunn.Managers;
 using Jotunn.Utils;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 namespace DynamicDungeons
@@ -10,19 +13,48 @@ namespace DynamicDungeons
         public List<Player> players = new List<Player>();
         public DynamicDungeons.DynamicDungeon dungeon;
         public bool isActive = false;
+        public Dictionary<uint, CooldownData> playerCooldowns = new Dictionary<uint, CooldownData>();
         public Dictionary<string, List<DungeonSpawnArea>> spawners;
         private List<Container> normalChests = new List<Container>();
         private List<Container> specialChests = new List<Container>();
         private Dictionary<string, List<GameObject>> spawnedMobs = new Dictionary<string, List<GameObject>>();
+        public struct CooldownData
+        {
+            public string playerName;
+            public Nullable<DateTime> cooldownEnd;
+        }
         private void Awake()
         {
             spawners = new Dictionary<string, List<DungeonSpawnArea>>();
             spawnedMobs = new Dictionary<string, List<GameObject>>();
+            InvokeRepeating("SaveCooldowns", 5, 300);
             foreach (string tier in DynamicDungeons.tiers)
             {
                 spawners.Add("DungeonSpawner_" + tier, new List<DungeonSpawnArea>());
                 spawnedMobs.Add("DungeonSpawner_" + tier, new List<GameObject>());
             }
+            if (File.Exists(Path.Combine(DynamicDungeons.configPaths["cooldowns"], dungeon.name + ".json")))
+                File.WriteAllText((Path.Combine(DynamicDungeons.configPaths["cooldowns"], dungeon.name + ".json")), "");
+            Jotunn.Logger.LogInfo("Reading dungeon cooldowns json: " + dungeon.name);
+            string storedCooldownsFile = File.ReadAllText(Path.Combine(DynamicDungeons.configPaths["cooldowns"], dungeon.name + ".json"));
+            Jotunn.Logger.LogInfo("Read dungeon cooldowns json: " + dungeon.name);
+            Dictionary<int, CooldownData> storedCooldowns = JsonConvert.DeserializeObject<Dictionary<int, CooldownData>>(storedCooldownsFile);
+            Jotunn.Logger.LogInfo("Deserialized dungeon cooldowns: " + dungeon.name);
+            foreach (ZNetPeer peer in ZNet.instance.m_peers)
+            {
+                if (storedCooldowns.ContainsKey(peer.GetHashCode()))
+                {
+                    playerCooldowns.Add(peer.m_characterID.m_id, storedCooldowns[peer.GetHashCode()]);
+                    continue;
+                }
+                playerCooldowns.Add(peer.m_characterID.m_id, new CooldownData
+                {
+                    playerName = peer.m_playerName,
+                    cooldownEnd = null
+                });
+            }
+            Jotunn.Logger.LogInfo("Added new players to dungeon cooldowns: " + dungeon.name);
+
         }
         private void Update()
         {
@@ -49,6 +81,15 @@ namespace DynamicDungeons
                 return;
             };
         }
+        private void SaveCooldowns()
+        {
+            Jotunn.Logger.LogInfo("Serializing dungeon cooldowns json: " + dungeon.name);
+            string cooldownJson = JsonConvert.SerializeObject(playerCooldowns);
+            Jotunn.Logger.LogInfo("Serialized dungeon cooldowns json: " + dungeon.name);
+            File.WriteAllText(Path.Combine(DynamicDungeons.configPaths["cooldowns"], dungeon.name + ".json"), cooldownJson);
+            Jotunn.Logger.LogInfo("Saved dungeon cooldowns json: " + dungeon.name);
+        }
+
         public void ServerScanChests()
         {
             foreach (string prefabName in DynamicDungeons.normalChestPrefabs)
@@ -71,32 +112,26 @@ namespace DynamicDungeons
                     ZPackage pkg = new ZPackage();
                     container.m_name = "Dungeon Chest";
                     Jotunn.Logger.LogInfo("Setting default items for normal chest ZDOID " + zdo.m_uid);
+                    List<DropTable.DropData> normalItems = new List<DropTable.DropData>();
+                    foreach (DynamicDungeons.ChestItemData item in dungeon.normalChest.items)
+                    {
+                        if (item.prefab == null) { Jotunn.Logger.LogWarning($"Invalid prefab found in {dungeon.name}'s normal chest items."); continue; }
+                        DropTable.DropData itemData = new DropTable.DropData
+                        {
+                            m_item = item.prefab,
+                            m_weight = item.weight,
+                            m_stackMin = item.minAmount,
+                            m_stackMax = item.maxAmount
+                        };
+                        normalItems.Add(itemData);
+                    }
                     container.m_defaultItems = new DropTable
                     {
                         m_dropChance = 1,
-                        m_dropMin = 1,
-                        m_dropMax = 3,
+                        m_dropMin = dungeon.normalChest.minItems,
+                        m_dropMax = dungeon.normalChest.maxItems,
                         m_oneOfEach = true,
-                        m_drops = new List<DropTable.DropData>() {
-                                new DropTable.DropData {
-                                    m_item = PrefabManager.Instance.GetPrefab("Stone"),
-                                    m_stackMin = 10,
-                                    m_stackMax = 20,
-                                    m_weight = 0.2f
-                                },
-                                new DropTable.DropData {
-                                    m_item = PrefabManager.Instance.GetPrefab("Wood"),
-                                    m_stackMin = 20,
-                                    m_stackMax = 40,
-                                    m_weight = 0.3f
-                                },
-                                new DropTable.DropData {
-                                    m_item = PrefabManager.Instance.GetPrefab("Flint"),
-                                    m_stackMin = 5,
-                                    m_stackMax = 10,
-                                    m_weight = 0.5f
-                                }
-                            }
+                        m_drops = normalItems
                     };
                     Jotunn.Logger.LogInfo("Adding default items for normal chest ZDOID " + zdo.m_uid);
                     ReflectionHelper.InvokePrivate(container, "AddDefaultItems");
@@ -130,7 +165,6 @@ namespace DynamicDungeons
                 if (player != null) players.Add(player);
                 if (other.gameObject.name.ToLower().Contains("chest"))
                 {
-                    Jotunn.Logger.LogInfo("Found normal chest");
                     normalChests.Add(other.gameObject.GetComponent<Container>());
                 };
 
