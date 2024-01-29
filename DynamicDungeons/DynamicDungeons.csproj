@@ -115,6 +115,7 @@
   <ItemGroup>
     <Compile Include="ASPUtils.cs" />
     <Compile Include="Commands.cs" />
+    <Compile Include="DDHUD.cs" />
     <Compile Include="DungeonEventManager.cs" />
     <Compile Include="DungeonManager.cs" />
     <Compile Include="DungeonSpawnArea.cs" />

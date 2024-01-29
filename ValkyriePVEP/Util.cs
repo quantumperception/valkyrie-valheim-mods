@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-namespace DynamicDungeons
+namespace ValkyriePVEP
 {
     public class Util
     {
@@ -143,12 +143,9 @@ namespace DynamicDungeons
         {
             ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, "ChatMessage", new Vector3(0f, 100f, 0f), 2, username, text);
         }
-        public static void SendPlayerMessage(long uid, string type, string msg)
+        public static void SendPlayerMessage(long uid, MessageHud.MessageType type, string msg)
         {
-            ZPackage pkg = new ZPackage();
-            pkg.Write(msg);
-            ZRoutedRpc.instance.InvokeRoutedRPC(uid, "DynamicDungeons Message", type, pkg);
-            return;
+            ZRoutedRpc.instance.InvokeRoutedRPC(uid, "DynamicDungeons Message", type, msg); return;
         }
         public static void SendPlayerChatMessage(long uid, string msg, string username = "DynamicDungeons")
         {

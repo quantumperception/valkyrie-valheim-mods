@@ -4,11 +4,9 @@ using Jotunn.Configs;
 using Jotunn.Entities;
 using Jotunn.Managers;
 using Jotunn.Utils;
-using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.Rendering;
-
 namespace Cannons
 {
     [BepInPlugin(PluginGUID, PluginName, PluginVersion)]
@@ -55,7 +53,7 @@ namespace Cannons
             harm.PatchAll();
 
         }
-        
+
         private static string GetPositionString()
         {
             return "Coords: " + playerPosition.x.ToString("F1") + "/" + playerPosition.y.ToString("F1") + "/" + playerPosition.z.ToString("F1");
@@ -167,18 +165,30 @@ namespace Cannons
 
         }
 
-        private static void AddCannonDrakkar(GameObject drakkarPrefab)
+        private static void AddCannonDrakkar(GameObject _drakkarPrefab)
         {
-            GameObject _cannonPrefab = cannonPrefab;
-            DestroyImmediate(_cannonPrefab.GetComponent<Piece>());
-            Cannon cannon = _cannonPrefab.AddComponent<Cannon>();
+            GameObject drakkarPrefab = Instantiate(_drakkarPrefab);
+            Transform interactive = drakkarPrefab.transform.Find("interactive");
+            Jotunn.Logger.LogInfo("Getting cannon prefab");
+            cannonPrefab = bundle.LoadAsset<GameObject>("Cannon");
+            Jotunn.Logger.LogInfo("Got cannon prefab");
+            GameObject _cannonPrefab = Instantiate(cannonPrefab, interactive);
+            Jotunn.Logger.LogInfo("Instantiated cannon prefab");
+            if (_cannonPrefab.GetComponent<Piece>() != null) DestroyImmediate(_cannonPrefab.GetComponent<Piece>());
+            Jotunn.Logger.LogInfo("Deleted piece component");
+            Cannon cannon = _cannonPrefab.GetComponent<Cannon>();
+            Jotunn.Logger.LogInfo("Got cannon component");
             Transform cannonTransform = _cannonPrefab.gameObject.transform.Find("cannon");
             cannon.barrel = cannonTransform.Find("barrel").gameObject;
             cannon.playerAttach = cannonTransform.Find("attach");
             cannon.projectilePrefab = cannonballPrefab;
             cannon.projectileSpawnPoint = cannon.barrel.transform.Find("BarrelTip");
-            setPosition(_cannonPrefab, drakkarPrefab);
-            cannonDrakkar = new CustomPiece(drakkarPrefab, false, new PieceConfig
+
+            //_cannonPrefab.transform.position = drakkarPrefab.transform.position;
+            _cannonPrefab.transform.localPosition = new Vector3(2f, 1.2f, 0f);
+            _cannonPrefab.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+            _cannonPrefab.layer = LayerMask.NameToLayer("piece_nonsolid");
+            cannonDrakkar = new CustomPiece(drakkarPrefab, true, new PieceConfig
             {
                 Name = "CannonWarship",
                 Icon = drakkarPrefab.GetComponent<Piece>().m_icon,

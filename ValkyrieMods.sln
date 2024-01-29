@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DynamicDungeons", "DynamicD
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cannons", "Navalheim\Cannons.csproj", "{17516A32-190F-4873-8DF2-3BA09AFA9180}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ValkyriePVEP", "ValkyriePVEP\ValkyriePVEP.csproj", "{42D9218D-1F1E-4D58-B40C-4D424210A685}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,6 +28,10 @@ Global
 		{17516A32-190F-4873-8DF2-3BA09AFA9180}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{17516A32-190F-4873-8DF2-3BA09AFA9180}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{17516A32-190F-4873-8DF2-3BA09AFA9180}.Release|Any CPU.Build.0 = Release|Any CPU
+		{42D9218D-1F1E-4D58-B40C-4D424210A685}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{42D9218D-1F1E-4D58-B40C-4D424210A685}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{42D9218D-1F1E-4D58-B40C-4D424210A685}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{42D9218D-1F1E-4D58-B40C-4D424210A685}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

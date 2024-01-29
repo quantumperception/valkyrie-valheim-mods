@@ -34,32 +34,37 @@
     <Reference Include="0Harmony">
       <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\BepInEx\core\0Harmony.dll</HintPath>
     </Reference>
-    <Reference Include="assembly_googleanalytics_publicized">
-      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_googleanalytics_publicized.dll</HintPath>
+    <Reference Include="assembly_googleanalytics_publicized, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\valheim_Data\Managed\publicized_assemblies\assembly_googleanalytics_publicized.dll</HintPath>
     </Reference>
-    <Reference Include="assembly_guiutils_publicized">
-      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_guiutils_publicized.dll</HintPath>
+    <Reference Include="assembly_guiutils_publicized, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\valheim_Data\Managed\publicized_assemblies\assembly_guiutils_publicized.dll</HintPath>
     </Reference>
-    <Reference Include="assembly_lux_publicized">
-      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_lux_publicized.dll</HintPath>
+    <Reference Include="assembly_lux_publicized, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\valheim_Data\Managed\publicized_assemblies\assembly_lux_publicized.dll</HintPath>
     </Reference>
-    <Reference Include="assembly_postprocessing_publicized">
-      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_postprocessing_publicized.dll</HintPath>
+    <Reference Include="assembly_simplemeshcombine_publicized, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\valheim_Data\Managed\publicized_assemblies\assembly_simplemeshcombine_publicized.dll</HintPath>
     </Reference>
-    <Reference Include="assembly_simplemeshcombine_publicized">
-      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_simplemeshcombine_publicized.dll</HintPath>
+    <Reference Include="assembly_steamworks_publicized, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\valheim_Data\Managed\publicized_assemblies\assembly_steamworks_publicized.dll</HintPath>
     </Reference>
-    <Reference Include="assembly_steamworks_publicized">
-      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_steamworks_publicized.dll</HintPath>
+    <Reference Include="assembly_sunshafts_publicized, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\valheim_Data\Managed\publicized_assemblies\assembly_sunshafts_publicized.dll</HintPath>
     </Reference>
-    <Reference Include="assembly_sunshafts_publicized">
-      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_sunshafts_publicized.dll</HintPath>
+    <Reference Include="assembly_utils_publicized, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\valheim_Data\Managed\publicized_assemblies\assembly_utils_publicized.dll</HintPath>
     </Reference>
-    <Reference Include="assembly_utils_publicized">
-      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_utils_publicized.dll</HintPath>
-    </Reference>
-    <Reference Include="assembly_valheim_publicized">
-      <HintPath>D:\SteamLibrary\steamapps\common\Valheim\valheim_Data\Managed\publicized_assemblies\assembly_valheim_publicized.dll</HintPath>
+    <Reference Include="assembly_valheim_publicized, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\valheim_Data\Managed\publicized_assemblies\assembly_valheim_publicized.dll</HintPath>
     </Reference>
     <Reference Include="BepInEx">
       <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\BepInEx\core\BepInEx.dll</HintPath>
@@ -73,8 +78,9 @@
     <Reference Include="HarmonyXInterop">
       <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\BepInEx\core\HarmonyXInterop.dll</HintPath>
     </Reference>
-    <Reference Include="Jotunn">
-      <HintPath>..\..\..\..\AppData\Roaming\r2modmanPlus-local\Valheim\profiles\ValhEmpires\BepInEx\plugins\ValheimModding-Jotunn\Jotunn.dll</HintPath>
+    <Reference Include="Jotunn, Version=2.11.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\SteamLibrary\steamapps\common\ValheimDEV\BepInEx\plugins\Jotunn.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

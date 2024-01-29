@@ -6,7 +6,7 @@ namespace Cannons
 
     public class Cannon : MonoBehaviour, Interactable, Hoverable
     {
-        public string name = "Cañón";
+        public string m_name = "Cañón";
         public GameObject barrel; // The barrel of the cannon
         private Collider barrelCollider;
         public float maxPushForce = 100f; // The maximum force that can be applied to the cannon
@@ -17,9 +17,6 @@ namespace Cannons
         public Transform projectileSpawnPoint;
         public float projectileSpeed = 50f; // The speed at which the projectile is launched from the cannon
         public float projectileLifeTime = 10f; // The lifetime of the projectile before it is destroyed
-        private int projectionPoints = 25;
-        private float timeBetweenPoints = 0.02f;
-        private Rigidbody projectileRigidbody; // The Rigidbody component of the cannon
         private bool reloading = false; // Whether the cannon is currently aiming at a target
         private float fireTimer = 0f; // The time since the cannon was last fired
         private Quaternion originalBarrelRotation;
@@ -55,21 +52,20 @@ namespace Cannons
                 if (reloading) fireTimer += Time.deltaTime;
                 if (barrel != null && Cannons.cameraTransform != null) barrel.transform.LookAt(Cannons.cameraTransform.position + Cannons.cameraTransform.forward * 100f);
                 if (Input.GetKeyDown(KeyCode.F) && loadedProjectile && !reloading) ShootProjectile();
-                //DrawProjectileProjection();
             }
         }
         public string GetHoverText()
         {
             if (!Cannons.usingCannon)
             {
-                if (!loadedProjectile) return Localization.instance.Localize(name + "\n[<color=yellow><b>$KEY_Use</b></color>] ") + "Cargar munición "; ;
-                return Localization.instance.Localize("\n[<color=yellow><b>$KEY_Use</b></color>] ") + "Usar " + name;
+                if (!loadedProjectile) return (m_name + "\n[<color=yellow><b>$KEY_Use</b></color>] ") + "Cargar munición "; ;
+                return ("\n[<color=yellow><b>$KEY_Use</b></color>] ") + "Usar " + m_name;
             };
             return "";
         }
         public string GetHoverName()
         {
-            return name;
+            return m_name;
         }
         public bool Interact(Humanoid _player, bool hold, bool alt)
         {
@@ -77,7 +73,7 @@ namespace Cannons
             {
                 SetActive(true);
                 player = Player.m_localPlayer;
-                player.AttachStart(playerAttach, null, true, false, true, "attach_chair", new Vector3(0, 0.5f, 0));
+                player.AttachStart(playerAttach, null, true, false, true, "attach_chair", new Vector3(0, 0.5f, 0), null);
                 if (player.IsAttached()) Jotunn.Logger.LogInfo(player.GetPlayerName() + " is using the cannon");
                 player.GetCollider().enabled = false;
                 barrelCollider.enabled = false;
@@ -212,7 +208,6 @@ namespace Cannons
             fireTimer = 0f;
             loadedProjectile = false;
             currentProjectile = null;
-            projectileRigidbody = null;
             return;
 
         }

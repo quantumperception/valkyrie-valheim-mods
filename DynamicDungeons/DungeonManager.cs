@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -23,6 +24,21 @@ namespace DynamicDungeons
         public static List<long> declineduids = new List<long>();
         private void Awake()
         {
+            if (!Util.IsServer()) return;
+            if (!File.Exists(DynamicDungeons.configPaths["cooldowns"]))
+                File.WriteAllText(DynamicDungeons.configPaths["cooldowns"], "");
+            //InvokeRepeating("SaveCooldowns", 5, 300);
+        }
+        private void SaveCooldowns()
+        {
+            foreach (DynamicDungeons.DynamicDungeon dungeon in DynamicDungeons.dungeons)
+            {
+                Jotunn.Logger.LogInfo("Serializing dungeon cooldowns json: " + dungeon.name);
+                //string cooldownJson = JsonConvert.SerializeObject(cooldown);
+                Jotunn.Logger.LogInfo("Serialized dungeon cooldowns json: " + dungeon.name);
+                //File.WriteAllText(Path.Combine(DynamicDungeons.configPaths["cooldowns"], dungeon.name + ".json"), cooldownJson);
+                Jotunn.Logger.LogInfo("Saved dungeon cooldowns json: " + dungeon.name);
+            }
         }
         public static void ScanDungeonChests()
         {
@@ -59,27 +75,11 @@ namespace DynamicDungeons
             }
             return;
         }
-        private void RPC_AddPlayerCooldown(long uid, string dungeonName, int minutes)
+        private static void SendCurrentDungeonUpdate(long uid, string dungeonName, bool entering)
         {
-            ZNetPeer peer = ZNet.instance.m_peers.Find(p => p.m_uid == uid);
-            uint playerZdoId = peer.m_characterID.m_id;
-            DungeonEventManager manager = Instance.managers[dungeonName];
-            manager.playerCooldowns[playerZdoId] = new DungeonEventManager.CooldownData
-            {
-                playerName = peer.m_playerName,
-                cooldownEnd = ((DateTime)manager.playerCooldowns[playerZdoId].cooldownEnd).AddMinutes(minutes)
-            };
-        }
-        private void RPC_RemovePlayerCooldown(long uid, string dungeonName, int minutes)
-        {
-            ZNetPeer peer = ZNet.instance.m_peers.Find(p => p.m_uid == uid);
-            uint playerZdoId = peer.m_characterID.m_id;
-            DungeonEventManager manager = Instance.managers[dungeonName];
-            manager.playerCooldowns[playerZdoId] = new DungeonEventManager.CooldownData
-            {
-                playerName = peer.m_playerName,
-                cooldownEnd = ((DateTime)manager.playerCooldowns[playerZdoId].cooldownEnd).AddMinutes(-minutes)
-            };
+            ZPackage pkg = new ZPackage();
+            pkg.Write(entering);
+            ZRoutedRpc.instance.InvokeRoutedRPC(uid, "DynamicDungeons DungeonUpdate", dungeonName, "CurrentDungeon", pkg);
         }
 
         public static void RPC_RequestInfo(long uid, string dungeonName)
@@ -90,19 +90,18 @@ namespace DynamicDungeons
         }
         public static void RPC_OnEnteredDungeon(long uid, string dungeonName)
         {
-            Jotunn.Logger.LogInfo(uid + " entered dungeon " + dungeonName);
-            ZPackage pkg = new ZPackage();
-            pkg.Write(true);
-            ZRoutedRpc.instance.InvokeRoutedRPC(uid, "DynamicDungeons DungeonUpdate", dungeonName, "CurrentDungeon", pkg);
-            Util.SendPlayerMessage(uid, MessageHud.MessageType.Center, "Entrando a " + dungeonName);
+            DungeonEventManager manager = Instance.managers[dungeonName];
+            manager.AddPlayer(uid);
+            SendCurrentDungeonUpdate(uid, dungeonName, true);
+            Util.SendPlayerMessage(uid, "center", "Entrando a " + dungeonName);
+
         }
         public static void RPC_OnExitedDungeon(long uid, string dungeonName)
         {
-            Jotunn.Logger.LogInfo(uid + " exited dungeon " + dungeonName);
-            ZPackage pkg = new ZPackage();
-            pkg.Write(false);
-            ZRoutedRpc.instance.InvokeRoutedRPC(uid, "DynamicDungeons DungeonUpdate", dungeonName, "CurrentDungeon", pkg);
-            Util.SendPlayerMessage(uid, MessageHud.MessageType.Center, "Saliendo de " + dungeonName);
+            DungeonEventManager manager = Instance.managers[dungeonName];
+            manager.RemovePlayer(uid);
+            SendCurrentDungeonUpdate(uid, dungeonName, false);
+            Util.SendPlayerMessage(uid, "center", "Saliendo de " + dungeonName);
         }
         public static void RPC_OnDungeonDeath(long uid, string dungeonName)
         {
@@ -133,27 +132,30 @@ namespace DynamicDungeons
         {
             if (!Instance.managers.ContainsKey(dungeonName)) { Jotunn.Logger.LogWarning("Start Event Failed - Didn't find dungeon " + dungeonName); return; }
             if (Instance.managers[dungeonName].isActive) { Jotunn.Logger.LogWarning("Event already active in " + dungeonName); return; }
-            Jotunn.Logger.LogInfo("Started dungeon event at " + dungeonName);
-            Instance.managers[dungeonName].isActive = true;
+            Jotunn.Logger.LogInfo("Starting dungeon event at " + dungeonName);
+            Instance.managers[dungeonName].StartEvent();
             ZPackage pkg = new ZPackage();
             pkg.Write(true);
             ZRoutedRpc.instance.InvokeRoutedRPC(uid, "DynamicDungeons DungeonUpdate", dungeonName, "EventState", pkg);
+            Jotunn.Logger.LogInfo("Started dungeon event at " + dungeonName);
             return;
         }
         public static void RPC_OnStopDungeonEvent(long uid, string dungeonName)
         {
             if (!Instance.managers.ContainsKey(dungeonName)) { Jotunn.Logger.LogWarning("Stop Event Failed - Didn't find dungeon " + dungeonName); return; }
             if (!Instance.managers[dungeonName].isActive) { Jotunn.Logger.LogWarning("No active event in " + dungeonName); return; }
-            Jotunn.Logger.LogInfo("Stopped dungeon event at " + dungeonName);
-            Instance.managers[dungeonName].isActive = false;
+            Jotunn.Logger.LogInfo("Stopping dungeon event at " + dungeonName);
+            Instance.managers[dungeonName].StopEvent();
             ZPackage pkg = new ZPackage();
             pkg.Write(false);
             ZRoutedRpc.instance.InvokeRoutedRPC(uid, "DynamicDungeons DungeonUpdate", dungeonName, "EventState", pkg);
+            Jotunn.Logger.LogInfo("Stopped dungeon event at " + dungeonName);
             return;
         }
         public static void OnDungeonUpdate(long uid, string dungeonName, string type, ZPackage pkg)
         {
             Jotunn.Logger.LogInfo("Got dungeon update from server: " + dungeonName);
+            DungeonEventManager manager = Instance.managers[dungeonName];
             switch (type)
             {
                 case "CurrentDungeon":
@@ -161,16 +163,33 @@ namespace DynamicDungeons
                     if (setDungeon)
                     {
                         Jotunn.Logger.LogInfo("Current dungeon: " + dungeonName);
-                        DynamicDungeons.currentDungeon = Instance.managers[dungeonName];
+                        DynamicDungeons.currentDungeon = manager;
                         break;
                     }
                     Jotunn.Logger.LogInfo("Exited dungeon: " + dungeonName);
-                    DynamicDungeons.currentDungeon = null; break;
+                    DynamicDungeons.currentDungeon = null;
+                    break;
                 case "EventState":
                     bool eventActive = pkg.ReadBool();
-                    Instance.managers[dungeonName].isActive = eventActive;
-                    if (eventActive) { Jotunn.Logger.LogInfo("Started event at: " + dungeonName); break; }
-                    Jotunn.Logger.LogInfo("Stopped event at: " + dungeonName); break;
+                    if (eventActive)
+                    {
+                        manager.StartEvent();
+                        Jotunn.Logger.LogInfo("Started event at: " + dungeonName);
+                        break;
+                    }
+                    manager.StopEvent();
+                    Jotunn.Logger.LogInfo("Stopped event at: " + dungeonName);
+                    break;
+                case "AlertTimer":
+                    if (pkg.ReadBool()) { manager.AlertTimerEnd = DateTime.Parse(pkg.ReadString()); manager.ActiveAlert = true; DynamicDungeons.lastDungeon = dungeonName; }
+                    else manager.ActiveAlert = false;
+                    break;
+                case "CooldownTimer":
+                    manager.CooldownEnd = DateTime.Parse(pkg.ReadString());
+                    break;
+                case "EventTimer":
+                    manager.EventEnd = DateTime.Parse(pkg.ReadString());
+                    break;
             }
             return;
         }
@@ -203,8 +222,10 @@ namespace DynamicDungeons
             declineduids.Add(uid);
             Jotunn.Logger.LogInfo("Raid declined:  " + uid);
         }
-        public static void ShowMessage(long uid, MessageHud.MessageType type, string msg)
+        public static void ShowMessage(long uid, string typeString, string msg)
         {
+            Jotunn.Logger.LogInfo("Showing message");
+            MessageHud.MessageType type = typeString == "center" ? MessageHud.MessageType.Center : MessageHud.MessageType.TopLeft;
             Player.m_localPlayer.Message(type, msg);
         }
         public static void PollPlayer(long sender)
@@ -312,6 +333,11 @@ namespace DynamicDungeons
             }
             pollPanel.SetActive(true);
             GUIManager.BlockInput(true);
+        }
+        public static void ClientRemoveDrops(long uid)
+        {
+            ItemDrop[] items = UnityEngine.Object.FindObjectsOfType<ItemDrop>();
+            foreach (ItemDrop item in items) GameObject.DestroyImmediate(item.gameObject);
         }
     }
 }

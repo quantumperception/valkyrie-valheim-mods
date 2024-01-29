@@ -57,29 +57,34 @@ namespace DynamicDungeons
         private DynamicDungeons.CustomCircleProjector triggerProjector;
         public float m_resizeTimer = 0f;
         public bool m_snap = true;
-        public bool m_spawned = false;
+        public List<GameObject> m_spawned = new List<GameObject>();
+        public bool m_hasSpawned = false;
         public SphereCollider detectorCollider;
 
 
         public void Awake()
         {
             m_nview = GetComponent<ZNetView>();
-            m_tier = base.gameObject.name.Split('_')[1].Split('(')[0];
+            m_tier = name.Split('_')[1].Split('(')[0];
             Initialize();
-            InvokeRepeating("UpdateSpawn", 2f, 2f);
+            //InvokeRepeating("UpdateSpawn", 2f, 2f);
         }
         public void Start()
         {
+            Jotunn.Logger.LogInfo($"{name} setting up vanilla projectors");
             SetupVanillaProjectors();
+            Jotunn.Logger.LogInfo($"{name} setting up projectors");
             SetupProjectors();
             if (!m_nview || m_nview.GetZDO() != null)
             {
+                Jotunn.Logger.LogInfo($"{name} enabling projectors");
                 if (!(bool)m_spawnRadiusMarker) m_spawnRadiusMarker.SetActive(true);
                 if (!(bool)m_triggerDistanceMarker) m_triggerDistanceMarker.SetActive(true);
+
             }
+            Jotunn.Logger.LogInfo($"{name} setting up trigger");
             detectorCollider = new SphereCollider
             {
-                name = this.gameObject.name + "_Detector",
                 radius = m_triggerDistance,
                 isTrigger = true
             };
@@ -138,14 +143,19 @@ namespace DynamicDungeons
                 return;
             }
         }
-        private void OnTriggerEnter()
+        private void OnTriggerEnter(Collider other)
         {
-            if (!m_spawned) UpdateSpawn();
-            m_spawned = true;
+            Player player = other.GetComponent<Player>();
+            if (player != null)
+            {
+                if (m_hasSpawned)
+                    WakeAllUp();
+                return;
+            }
+            return;
         }
-        private void OnTriggerExit()
+        private void OnTriggerExit(Collider other)
         {
-            if (m_spawned) m_spawned = false;
         }
         private void Initialize()
         {
@@ -309,18 +319,26 @@ namespace DynamicDungeons
             //triggerProjector.enabled = !m_snap;
             Jotunn.Logger.LogInfo("Set " + m_tier + " spawner snap to " + m_snap);
         }
-        public void UpdateSpawn()
+        public void WakeAllUp()
         {
-            if (m_manager != null && m_manager.isActive && Player.IsPlayerInRange(base.transform.position, m_triggerDistance))
+            foreach (GameObject prefab in m_spawned)
             {
-                m_spawnTimer += 2f;
-                if (m_spawnTimer > m_spawnIntervalSec)
-                {
-                    m_spawnTimer = 0f;
-                    int randomSpawnAmount = Mathf.RoundToInt(Random.Range(m_minSpawned, m_maxSpawned));
-                    SpawnMany(randomSpawnAmount);
-                }
+                MonsterAI mob = prefab.GetComponent<MonsterAI>();
+                mob.m_sleeping = false;
             }
+        }
+        public void Spawn()
+        {
+            int randomSpawnAmount = Mathf.RoundToInt(Random.Range(m_minSpawned, m_maxSpawned));
+            m_spawned = SpawnMany(randomSpawnAmount);
+            m_hasSpawned = true;
+        }
+        public void Despawn()
+        {
+            foreach (GameObject prefab in m_spawned)
+                DestroyImmediate(prefab);
+            m_spawned.Clear();
+            m_hasSpawned = false;
         }
 
         public List<GameObject> SpawnMany(int amount)
@@ -332,64 +350,65 @@ namespace DynamicDungeons
                 return new List<GameObject>();
             }
             List<GameObject> successFulAttempts = new List<GameObject>();
+            int count = 0;
             do
             {
+                count++;
                 GameObject spawned = SpawnOne();
                 if (spawned != null) successFulAttempts.Add(spawned);
-            } while (successFulAttempts.Count != amount);
+            } while (successFulAttempts.Count != amount || count < 100);
             return successFulAttempts;
         }
 
         public GameObject SpawnOne()
         {
+            Jotunn.Logger.LogInfo(name + " is selecting weighted prefab");
             DynamicDungeons.SpawnData spawnData = SelectWeightedPrefab();
-            if (spawnData == null)
-            {
-                return null;
-            }
-            if (!FindSpawnPoint(spawnData.prefab, out var point))
-            {
-                return null;
-            }
-            GameObject gameObject = Instantiate(spawnData.prefab, point, Quaternion.Euler(0f, Random.Range(0, 360), 0f));
+            if (spawnData == null || spawnData.prefab == null) return null;
+            Jotunn.Logger.LogInfo(name + " is finding spawn point for " + spawnData.prefab.name);
+            if (!FindSpawnPoint(spawnData.prefab, out var point)) return null;
+            Jotunn.Logger.LogInfo($"{name} is spawning {spawnData.prefab.name} at {point.x} {point.y} {point.z}");
+            GameObject mob = Instantiate(spawnData.prefab, point, Quaternion.Euler(0f, Random.Range(0, 360), 0f));
             if (m_setPatrolSpawnPoint)
             {
-                BaseAI ai = gameObject.GetComponent<BaseAI>();
+                BaseAI ai = mob.GetComponent<BaseAI>();
                 if (ai != null)
                 {
                     ai.SetPatrolPoint();
                 }
             }
-            Character character = gameObject.GetComponent<Character>();
+            Jotunn.Logger.LogInfo($"{name} is trying to get {mob.name}'s Character");
+            Character character = mob.GetComponent<Character>();
+            character.m_faction = Character.Faction.Demon;
+            Jotunn.Logger.LogInfo($"{name} is trying to get {mob.name}'s MonsterAI");
+            MonsterAI monsterAi = mob.GetComponent<MonsterAI>();
+            monsterAi.m_sleeping = true;
             if (spawnData.maxLevel > 1)
             {
-                int i;
-                for (i = spawnData.minLevel; i < spawnData.maxLevel; i++)
+                for (int i = spawnData.minLevel; i < spawnData.maxLevel; i++)
                 {
-                    if (!(Random.Range(0f, 100f) <= m_levelupChance))
-                    {
-                        break;
-                    }
-                }
-                if (i > 1)
-                {
-                    character.SetLevel(i);
+                    if (!(Random.Range(0f, 100f) <= m_levelupChance)) break;
+                    if (i > 1) character.SetLevel(i);
+                    Jotunn.Logger.LogInfo($"{name} set {mob.name}'s level to {i}");
                 }
             }
-            CharacterDrop characterDrop = gameObject.GetComponent<CharacterDrop>();
-            //ReflectionHelper.SetPrivateField(characterDrop, "m_dropsEnabled", true);
-            //ReflectionHelper.SetPrivateField(characterDrop, "m_character", character);
-            List<CharacterDrop.Drop> mobDropConfig = m_manager.dungeon.mobConfig[m_tier].mobs.Find(mob => spawnData.prefab.name == mob.prefab.name).drops;
-            if (mobDropConfig.Count == 0)
+            Jotunn.Logger.LogInfo($"{name} is trying to get {mob.name}'s CharacterDrop");
+            CharacterDrop characterDrop = mob.GetComponent<CharacterDrop>();
+            List<CharacterDrop.Drop> mobDropConfig = m_manager.dungeon.mobConfig.ContainsKey(m_tier) ? m_manager.dungeon.mobConfig[m_tier].mobs.Find(m => mob.name == m.prefab.name).drops : null;
+            if (mobDropConfig != null)
             {
-                Jotunn.Logger.LogInfo("Using default " + m_tier + " config for " + spawnData.prefab.name);
-                characterDrop.m_drops = m_manager.dungeon.mobConfig[m_tier].tierDrops;
+                if (characterDrop == null) characterDrop = mob.AddComponent<CharacterDrop>();
+                if (mobDropConfig.Count == 0)
+                {
+                    Jotunn.Logger.LogInfo("Using default " + m_tier + " config for " + mob.name);
+                    characterDrop.m_drops = m_manager.dungeon.mobConfig[m_tier].tierDrops;
+                }
+                else characterDrop.m_drops = mobDropConfig;
             }
-            else characterDrop.m_drops = mobDropConfig;
             Vector3 centerPoint = character.GetCenterPoint();
             m_spawnEffects.Create(centerPoint, Quaternion.identity);
-            Jotunn.Logger.LogInfo(base.gameObject.name + " spawned " + gameObject.name);
-            return gameObject;
+            Jotunn.Logger.LogInfo($"{name} spawned {mob.name}");
+            return mob;
         }
 
         public bool FindSpawnPoint(GameObject prefab, out Vector3 point)

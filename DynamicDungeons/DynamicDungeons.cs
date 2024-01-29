@@ -23,11 +23,11 @@ namespace DynamicDungeons
         public const string PluginName = "DynamicDungeons";
         public const string PluginVersion = "0.0.1";
         private static AssetBundle bundle;
-        private static GameObject dungeon;
         private static List<string> dungeonFiles;
         public static Dictionary<string, string> storedDungeons = new Dictionary<string, string>();
         public static List<DynamicDungeon> dungeons = new List<DynamicDungeon>();
         public static DungeonEventManager currentDungeon;
+        public static string lastDungeon;
         private static List<GameObject> boundingBoxes = new List<GameObject>();
         public static readonly string pluginPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
         public static readonly string configPath = Path.Combine(Directory.GetParent(pluginPath).FullName, "config");
@@ -35,7 +35,7 @@ namespace DynamicDungeons
         public static readonly Dictionary<string, string> configPaths = new Dictionary<string, string>() {
             {"main",  Path.Combine(jsonConfigsPath, "main.json") },
             {"dungeons", Path.Combine(jsonConfigsPath, "dungeons") },
-            {"cooldowns", Path.Combine(jsonConfigsPath, "cooldowns") },
+            {"cooldowns", Path.Combine(jsonConfigsPath, "cooldowns.json") },
         };
         public static readonly List<string> tiers = new List<string> { "T1", "T2", "T3", "T4", "T5", "BOSS", };
         public static readonly Dictionary<string, Color> tierColors = new Dictionary<string, Color>();
@@ -47,6 +47,7 @@ namespace DynamicDungeons
 
         private void Awake()
         {
+            //bundle = AssetUtils.LoadAssetBundleFromResources("dungeonbundle");
             FillTierColors();
             if (Util.IsServer())
             {
@@ -54,18 +55,37 @@ namespace DynamicDungeons
                 FileSystemWatcher watcher = new FileSystemWatcher(configPaths["dungeons"]);
                 watcher.Changed += new FileSystemEventHandler(OnDungeonConfigChange);
                 watcher.EnableRaisingEvents = true;
-                PrefabManager.OnVanillaPrefabsAvailable += DungeonManager.ScanDungeonChests;
-                PrefabManager.OnVanillaPrefabsAvailable += DungeonManager.ScanDungeonSpawners;
             }
-            //AddPieceCategories();
-            //bundle = AssetUtils.LoadAssetBundleFromResources("dungeonbundle");
-            //AddDungeon();
             CreateSegments();
             AddCustomSpawners();
             CommandManager.Instance.AddConsoleCommand(new Commands.SavePrefabListCommand());
             CommandManager.Instance.AddConsoleCommand(new Commands.DynamicDungeonsCommand());
             CommandManager.Instance.AddConsoleCommand(new Commands.SaveAttackListCommand());
             harm.PatchAll();
+        }
+        private static void CreateReferenceGUI()
+        {
+            for (int x = 0; x < 3840; x += 100)
+            {
+                for (int y = 0; y < 2160; y += 100)
+                {
+                    GUIManager.Instance.CreateText(
+                        text: $"{x},{y}",
+                        parent: GUIManager.CustomGUIFront.transform,
+                        anchorMin: new Vector2(0f, 1f),
+                        anchorMax: new Vector2(0f, 1f),
+                        position: new Vector2(x, -y),
+                        font: GUIManager.Instance.AveriaSerifBold,
+                        fontSize: 10,
+                        color: GUIManager.Instance.ValheimOrange,
+                        outline: true,
+                        outlineColor: Color.black,
+                        100f,
+                        100f,
+                        addContentSizeFitter: true
+                    );
+                }
+            }
         }
         private static void CreateSegments()
         {
@@ -115,7 +135,9 @@ namespace DynamicDungeons
             if (DungeonManager.Instance.managers.Count != 0) DungeonManager.Instance.managers.Clear();
             foreach (DynamicDungeon dungeon in dungeons)
             {
+                Jotunn.Logger.LogInfo("Adding manager: " + dungeon.name);
                 boundingBoxes.Add(CreateBoundingBox(dungeon));
+                Jotunn.Logger.LogInfo("Added manager: " + dungeon.name);
             }
             Jotunn.Logger.LogInfo(DungeonManager.Instance.managers.Count + " dungeon managers found");
         }
@@ -140,7 +162,7 @@ namespace DynamicDungeons
             //corner2.transform.position = new Vector3(corners[1].x, corners[1].y, corners[1].z);
             Renderer boundingBoxRenderer = boundingBox.GetComponent<Renderer>();
             Color redAlpha = Color.red;
-            redAlpha.a = 0.5f;
+            redAlpha.a = 0.25f;
             boundingBoxRenderer.material.color = redAlpha;
             boundingBoxRenderer.material = Util.SetRenderTransparent(boundingBoxRenderer.material);
             boundingBox.transform.localPosition = Vector3.Lerp(new Vector3(corners[0].x, corners[0].y, corners[0].z), new Vector3(corners[1].x, corners[1].y, corners[1].z), 0.5f);
@@ -155,11 +177,10 @@ namespace DynamicDungeons
 
         private static void TryCreateConfigs()
         {
-            Jotunn.Logger.LogInfo(pluginPath);
-            Jotunn.Logger.LogInfo(configPath);
             if (!Directory.Exists(configPath)) { Jotunn.Logger.LogError("DynamicDungeons' DLL must be directly in the plugins folder."); return; }
             if (!Directory.Exists(jsonConfigsPath)) Directory.CreateDirectory(jsonConfigsPath);
             if (!Directory.Exists(configPaths["dungeons"])) Directory.CreateDirectory(configPaths["dungeons"]);
+            if (!Directory.Exists(configPaths["cooldowns"])) Directory.CreateDirectory(configPaths["cooldowns"]);
             foreach (string file in configPaths.Values)
             {
                 if (!File.Exists(file) && !Directory.Exists(file))
@@ -459,7 +480,8 @@ namespace DynamicDungeons
             ZRoutedRpc.instance.Register("DynamicDungeons DungeonUpdate", new Action<long, string, string, ZPackage>(DungeonManager.OnDungeonUpdate));
             ZRoutedRpc.instance.Register("DynamicDungeons DungeonCompleted", new Action<long, string>(DungeonManager.OnDungeonCompleted));
             ZRoutedRpc.instance.Register("DynamicDungeons DungeonFailed", new Action<long, string>(DungeonManager.OnDungeonFailed));
-            ZRoutedRpc.instance.Register("DynamicDungeons Message", new Action<long, MessageHud.MessageType, string>(DungeonManager.ShowMessage));
+            ZRoutedRpc.instance.Register("DynamicDungeons Message", new Action<long, string, string>(DungeonManager.ShowMessage));
+            ZRoutedRpc.instance.Register("DynamicDungeons RemoveDrops", new Action<long>(DungeonManager.ClientRemoveDrops));
         }
         public static ZPackage SerializeDungeon(DynamicDungeon dungeon)
         {
@@ -515,6 +537,8 @@ namespace DynamicDungeons
                     //Game.instance.StartCoroutine(DungeonManager.dungeonPollCoroutine);
                     AddServerRPC();
                     LoadDungeons();
+                    DungeonManager.ScanDungeonChests();
+                    DungeonManager.ScanDungeonSpawners();
                 }
                 if (!Util.IsServer())
                 {
@@ -522,6 +546,16 @@ namespace DynamicDungeons
                     AddClientRPC();
                     SetVanillaReferences();
                 }
+            }
+        }
+        [HarmonyPatch(typeof(Game), nameof(Game.Update))]
+        private static class GameUpdatePatch
+        {
+            private static void Postfix(Game __instance)
+            {
+                if (Util.IsServer()) return;
+                if (currentDungeon != null) DDHUD.UpdateHud();
+                if (lastDungeon != null && DungeonManager.Instance.managers[lastDungeon].ActiveAlert) DDHUD.UpdateAlert();
             }
         }
         [HarmonyPatch(typeof(ZNetScene), nameof(ZNetScene.OnDestroy))]
