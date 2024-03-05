@@ -1,12 +1,13 @@
 ﻿using Jotunn.Managers;
 using UnityEngine;
+
 namespace Cannons
 {
 
 
     public class Cannon : MonoBehaviour, Interactable, Hoverable
     {
-        public string m_name = "Cañón";
+        public string m_name = "$piece_cannon";
         public GameObject barrel; // The barrel of the cannon
         private Collider barrelCollider;
         public float maxPushForce = 100f; // The maximum force that can be applied to the cannon
@@ -15,8 +16,8 @@ namespace Cannons
         public Projectile projectile;
         public GameObject projectilePrefab; // The prefab for the projectile to be loaded and shot from the cannon
         public Transform projectileSpawnPoint;
-        public float projectileSpeed = 50f; // The speed at which the projectile is launched from the cannon
-        public float projectileLifeTime = 10f; // The lifetime of the projectile before it is destroyed
+        public float projectileSpeed = 40f; // The speed at which the projectile is launched from the cannon
+        public float projectileLifeTime = 15f; // The lifetime of the projectile before it is destroyed
         private bool reloading = false; // Whether the cannon is currently aiming at a target
         private float fireTimer = 0f; // The time since the cannon was last fired
         private Quaternion originalBarrelRotation;
@@ -26,7 +27,7 @@ namespace Cannons
         private GameObject currentProjectile; // The current projectile loaded in the cannon
         private static ItemDrop.ItemData arbalestItem;
         private static ItemDrop.ItemData blackmetalBolt;
-        private static GameObject aoeSpawn;
+
 
         private void Awake()
         {
@@ -40,8 +41,6 @@ namespace Cannons
             originalBarrelRotation = barrel.transform.rotation;
             arbalestItem = PrefabManager.Instance.GetPrefab("DvergerArbalest").GetComponent<ItemDrop>().m_itemData;
             blackmetalBolt = PrefabManager.Instance.GetPrefab("BoltBlackmetal").GetComponent<ItemDrop>().m_itemData;
-            aoeSpawn = PrefabManager.Instance.GetPrefab("sledge_aoe");
-            aoeSpawn.AddComponent<Aoe>().m_damage = new HitData.DamageTypes { m_blunt = 80 };
         }
         private void Update()
         {
@@ -58,8 +57,8 @@ namespace Cannons
         {
             if (!Cannons.usingCannon)
             {
-                if (!loadedProjectile) return (m_name + "\n[<color=yellow><b>$KEY_Use</b></color>] ") + "Cargar munición "; ;
-                return ("\n[<color=yellow><b>$KEY_Use</b></color>] ") + "Usar " + m_name;
+                if (!loadedProjectile) return Localization.instance.Localize((m_name + "\n[<color=yellow><b>$KEY_Use</b></color>] ") + "$cannons_load_ammo");
+                return Localization.instance.Localize(("\n[<color=yellow><b>$KEY_Use</b></color>] $piece_use ") + m_name);
             };
             return "";
         }
@@ -73,7 +72,7 @@ namespace Cannons
             {
                 SetActive(true);
                 player = Player.m_localPlayer;
-                player.AttachStart(playerAttach, null, true, false, true, "attach_chair", new Vector3(0, 0.5f, 0), null);
+                player.AttachStart(playerAttach, null, true, false, true, "crouching", new Vector3(0, 0.5f, 0));
                 if (player.IsAttached()) Jotunn.Logger.LogInfo(player.GetPlayerName() + " is using the cannon");
                 player.GetCollider().enabled = false;
                 barrelCollider.enabled = false;
@@ -173,7 +172,7 @@ namespace Cannons
                 bool hasCannonball = Player.m_localPlayer.GetInventory().HaveItem(cannonballName);
                 if (!hasCannonball)
                 {
-                    Player.m_localPlayer.Message(MessageHud.MessageType.Center, "No tienes " + cannonballName);
+                    Player.m_localPlayer.Message(MessageHud.MessageType.Center, Localization.instance.Localize("$msg_outof ") + cannonballName);
                     return;
                 }
                 Player.m_localPlayer.GetInventory().RemoveItem(cannonballName, 1);
@@ -187,14 +186,14 @@ namespace Cannons
         {
             currentProjectile = Instantiate(projectilePrefab, projectileSpawnPoint.position + projectileSpawnPoint.forward * 0.5f, projectileSpawnPoint.rotation);
             projectile = currentProjectile.GetComponent<Projectile>();
-            projectile.m_damage = new HitData.DamageTypes { m_blunt = 130, m_chop = 50 };
-            projectile.m_spawnOnHit = PrefabManager.Instance.GetPrefab("sledge_aoe");
+            projectile.m_damage = new HitData.DamageTypes { m_blunt = Cannons.CannonballProjectileBluntDamage.Value, m_chop = Cannons.CannonballProjectileChopDamage.Value };
+            projectile.m_spawnOnHit = Cannons.cannonballHitAoe;
             projectile.m_spawnOnHit.GetComponent<Aoe>().m_damage = new HitData.DamageTypes { m_blunt = 100 };
             projectile.m_canHitWater = false;
             currentProjectile.SetActive(false);
             HitData hitData = new HitData();
             hitData.m_pushForce = projectileSpeed;
-            hitData.m_backstabBonus = arbalestItem.m_shared.m_backstabBonus;
+            hitData.m_backstabBonus = 4;
             hitData.m_staggerMultiplier = 10;
             hitData.m_blockable = false;
             hitData.m_dodgeable = true;
@@ -210,6 +209,14 @@ namespace Cannons
             currentProjectile = null;
             return;
 
+        }
+
+        public void OnDestroy()
+        {
+            if (player != null && Cannons.usingCannon)
+            {
+                SetActive(false);
+            }
         }
     }
 

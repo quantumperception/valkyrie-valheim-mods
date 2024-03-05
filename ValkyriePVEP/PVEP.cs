@@ -15,6 +15,8 @@ namespace ValkyriePVEP
         public const string PluginVersion = "0.0.1";
         private Harmony harm = new Harmony("ValkyriePVEP");
         private DateTime pvpCooldown;
+        public float PVPRange = 10f;
+
 
         private void Awake()
         {
@@ -46,7 +48,6 @@ namespace ValkyriePVEP
                 {
                     __instance.m_nview.GetZDO().Set("dead", value: true);
                     __instance.m_nview.InvokeRPC(ZNetView.Everybody, "OnDeath");
-                    Game.instance.GetPlayerProfile().m_playerStats.m_deaths++;
                     Game.instance.RequestRespawn(8); // Respawn timer
                     __instance.m_timeSinceDeath = 0f;
                     __instance.Message(MessageHud.MessageType.TopLeft, "PVEP: Your items have been preserved!");

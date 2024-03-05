@@ -374,5 +374,6 @@ Environment.props
 # not the generated dll for thunderstore
 */Package/plugins/*
 
-./cannons
+Navalheim/cannons
 dungeonbundle
+armor

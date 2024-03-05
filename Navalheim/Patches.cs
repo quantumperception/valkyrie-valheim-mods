@@ -3,7 +3,7 @@ using Jotunn.Managers;
 using UnityEngine;
 namespace Cannons
 {
-    partial class Cannons
+    public partial class Cannons
     {
         [HarmonyPatch]
         public static class GameCameraPatch
@@ -32,49 +32,9 @@ namespace Cannons
                 }
             }
         }
-        [HarmonyPatch]
-        public static class ZNetScenePatches 
-        {
-            [HarmonyPatch(typeof(ZNetScene), nameof(ZNetScene.Awake))]
-            private static class ZNetSceneAwakePatch
-            {
-                private static void Prefix(ZNetScene __instance)
-                {
-                    AddCannonPiece();
-                    Jotunn.Logger.LogInfo("Added cannon");
-                    GameObject drakkarPrefab = __instance.m_prefabs.Find((GameObject x) => x.name == "VikingShip");
-
-                    Jotunn.Logger.LogInfo("Got drakkar prefab");
-                    AddCannonDrakkar(drakkarPrefab);
-                    Jotunn.Logger.LogInfo("Added cannon drakkar");
-                }
-            }
-        }
+        
         public static class PlayerPatches
         {
-            [HarmonyPatch(typeof(Player), "UpdatePlacementGhost")]
-            [HarmonyPostfix]
-            private static void UpdatePlacementGhostPatch(Player __instance)
-            {
-                bool localPlayer = !Player.m_localPlayer || Player.m_localPlayer != __instance;
-                if (!localPlayer) return;
-                GameObject placementGhost = __instance.m_placementGhost;
-                Piece piece = (placementGhost != null) ? placementGhost.GetComponent<Piece>() : null;
-                if (!piece) return;
-                bool isCannon = Utils.GetPrefabName(piece.gameObject) == "piece_cannon";
-                if (!isCannon) return;
-                bool isAboveWater = piece.transform.position.y < ZoneSystem.instance.m_waterLevel;
-                if (!isAboveWater)
-                {
-                    __instance.m_placementStatus = Player.PlacementStatus.Invalid;
-                    __instance.SetPlacementGhostValid(false);
-                }
-                 else
-                {
-                    __instance.m_placementStatus = Player.PlacementStatus.Valid;
-                    __instance.SetPlacementGhostValid(true);
-                }
-            }
             [HarmonyPatch(typeof(Player), nameof(Player.Update))]
             private static class PlayerUpdatePatch
             {

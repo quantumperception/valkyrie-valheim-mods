@@ -222,11 +222,10 @@ namespace DynamicDungeons
             declineduids.Add(uid);
             Jotunn.Logger.LogInfo("Raid declined:  " + uid);
         }
-        public static void ShowMessage(long uid, string typeString, string msg)
+        public static void ShowMessage(long uid, MessageHud.MessageType typeString, string msg)
         {
             Jotunn.Logger.LogInfo("Showing message");
-            MessageHud.MessageType type = typeString == "center" ? MessageHud.MessageType.Center : MessageHud.MessageType.TopLeft;
-            Player.m_localPlayer.Message(type, msg);
+            Player.m_localPlayer.Message(typeString, msg);
         }
         public static void PollPlayer(long sender)
         {
