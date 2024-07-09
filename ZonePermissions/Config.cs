@@ -2,8 +2,6 @@
 using BepInEx.Configuration;
 using System;
 using System.IO;
-using Jotunn;
-using Jotunn.Utils;
 using UnityEngine;
 
 namespace ZonePermissions

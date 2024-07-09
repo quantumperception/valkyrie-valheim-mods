@@ -38,6 +38,7 @@ namespace ValkyrieAssetLoader
             LoadAssets();
             PrefabManager.OnVanillaPrefabsAvailable += OnVanillaPrefabsAvailable;
             harm.PatchAll();
+            BoneReorder.ApplyOnEquipmentChanged();
         }
 
         void OnVanillaPrefabsAvailable()

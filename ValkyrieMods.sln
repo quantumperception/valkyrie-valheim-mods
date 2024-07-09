@@ -20,6 +20,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ValkyrieWeapons", "Valkyrie
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ValkyrieAssetLoader", "ValkyrieAssetLoader\ValkyrieAssetLoader.csproj", "{BBDC753F-4C35-48C6-9CCA-1956BBE12BD2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ValkyrieStatusEffects", "ValkyrieStatusEffects\ValkyrieStatusEffects.csproj", "{58B2D542-66AC-4436-A3DB-8844BB0C7991}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -62,6 +64,10 @@ Global
 		{BBDC753F-4C35-48C6-9CCA-1956BBE12BD2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BBDC753F-4C35-48C6-9CCA-1956BBE12BD2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BBDC753F-4C35-48C6-9CCA-1956BBE12BD2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{58B2D542-66AC-4436-A3DB-8844BB0C7991}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{58B2D542-66AC-4436-A3DB-8844BB0C7991}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{58B2D542-66AC-4436-A3DB-8844BB0C7991}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{58B2D542-66AC-4436-A3DB-8844BB0C7991}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

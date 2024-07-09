@@ -16,7 +16,7 @@ namespace ZonePermissions
         private readonly static ZonePermissions instance;
         public const string PluginGUID = "com.valkyrie.zonepermissions";
         public const string PluginName = "Zone Permissions";
-        public const string PluginVersion = "0.1.0";
+        public const string PluginVersion = "1.0.0";
         public static string ZoneDir = Path.Combine(BepInEx.Paths.ConfigPath, "ZonePermissions");
         public static string DefaultZonePath = Path.Combine(ZoneDir, "Zones.txt");
         public const int AreaRange = 100;
